@@ -1,0 +1,945 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>BAUFLIEGER</title>
+<link rel="icon" type="image/png" href="logo-192.png">
+<link rel="apple-touch-icon" href="logo-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#12294f">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.1/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#eef1f4;--paper:#fff;--ink:#18202a;--muted:#5d6977;--line:#cfd6de;--soft:#f6f8fa;--navy:#12294f;--navy-ink:#fff;--org:#f07c12;--org-soft:#fdf1e4;--org-ink:#8a4200;--danger:#b42318;--danger-soft:#fdecea;--ok:#16794a;--ok-soft:#e6f4ec;--warn-soft:#fff6db;--warn-ink:#7a5200;--blue-soft:#e8eefb;--blue-ink:#1f4fa3;--violet-soft:#efeafb;--violet-ink:#5b3fa8}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141a;--paper:#171e26;--ink:#e6ebf0;--muted:#94a1af;--line:#2c3743;--soft:#1c242e;--navy:#9db8ea;--navy-ink:#0b1220;--org-soft:#3a2510;--org-ink:#ffb36b;--danger:#ff7a6e;--danger-soft:#3b1d1b;--ok:#4cc38a;--ok-soft:#14301f;--warn-soft:#352b10;--warn-ink:#f2c55c;--blue-soft:#18263d;--blue-ink:#9db8ea;--violet-soft:#261f3a;--violet-ink:#c3b2f5}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 "IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-text-size-adjust:100%}
+h1,h2,h3,.cond{font-family:"Barlow Condensed","IBM Plex Sans",sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--navy)}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
+.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.muted{color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.wrap{max-width:1240px;margin:0 auto;padding:16px 16px 64px}
+/* Buttons & Felder */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn:hover{background:var(--soft)}
+.btn.p{background:var(--navy);border-color:var(--navy);color:var(--navy-ink)}
+.btn.p:hover{filter:brightness(1.1)}
+.btn.o{background:var(--org);border-color:var(--org);color:#fff}
+.btn.d{color:var(--danger)}
+.btn.s{min-height:36px;padding:0 12px;font-size:14px}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn svg{width:18px;height:18px;flex-shrink:0}
+label.f{display:flex;flex-direction:column;gap:6px;min-width:0}
+label.f>span{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.in{width:100%;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-size:16px}
+textarea.in{padding:10px 12px;min-height:72px;resize:vertical}
+.in:focus,.btn:focus-visible{outline:2px solid var(--org);outline-offset:1px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:16px}
+.chip{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.c-ok{background:var(--ok-soft);color:var(--ok)}.c-warn{background:var(--warn-soft);color:var(--warn-ink)}.c-bad{background:var(--danger-soft);color:var(--danger)}.c-grey{background:var(--soft);color:var(--muted);border:1px solid var(--line)}.c-org{background:var(--org-soft);color:var(--org-ink)}.c-blue{background:var(--blue-soft);color:var(--blue-ink)}.c-violet{background:var(--violet-soft);color:var(--violet-ink)}
+/* Anmeldung */
+#auth{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+#auth .card{max-width:460px;width:100%;padding:24px;border-top:4px solid var(--org);box-shadow:0 2px 8px rgba(18,41,79,.12)}
+#auth .brand{display:flex;align-items:center;gap:14px}
+#auth .brand img{width:64px;height:64px;border-radius:12px}
+#auth h1{margin:0;font-size:32px;line-height:1;color:var(--navy);letter-spacing:.03em}
+.seg{display:flex;gap:4px;background:var(--soft);border:1px solid var(--line);padding:4px;border-radius:10px;margin:18px 0 14px}
+.seg button{flex:1;min-height:40px;border:0;border-radius:7px;background:transparent;font-weight:600;font-size:14px;cursor:pointer;color:var(--muted)}
+.seg button[aria-selected=true]{background:var(--paper);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.stack{display:flex;flex-direction:column;gap:12px}
+.hint{font-size:13px;color:var(--muted)}
+.msg{padding:10px 12px;border-radius:8px;font-size:14px;font-weight:500}
+.msg.bad{background:var(--danger-soft);color:var(--danger)}.msg.ok{background:var(--ok-soft);color:var(--ok)}.msg.info{background:var(--blue-soft);color:var(--blue-ink)}
+footer.small{margin-top:16px;font-size:12px;color:var(--muted)}
+/* App-Kopf */
+.banner{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:10px 14px;border-radius:8px;border:1px solid #f1c48f;background:var(--org-soft);color:var(--org-ink);font-weight:600;font-size:14px;margin-bottom:16px}
+.banner.bad{border-color:var(--danger);background:var(--danger-soft);color:var(--danger)}
+.banner a{color:inherit;cursor:pointer}
+.head{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;justify-content:space-between;padding-bottom:16px;border-bottom:3px solid var(--org);margin-bottom:18px}
+.head .brand{display:flex;gap:14px;align-items:center;min-width:0}
+.head img{width:60px;height:60px;border-radius:12px;flex-shrink:0}
+.head h1{margin:0;font-size:34px;line-height:1;color:var(--navy);letter-spacing:.03em}
+.head .by{font-size:14px;color:var(--muted)}
+.head .by b{color:var(--org);font-family:"Barlow Condensed",sans-serif;letter-spacing:.04em;font-size:16px}
+.user{display:flex;align-items:center;gap:10px;padding:6px 6px 6px 14px;border:1px solid var(--line);border-radius:999px;background:var(--paper)}
+.user .who{display:flex;flex-direction:column;line-height:1.2}
+.user .who b{font-size:14px}.user .who span{font-size:12px;color:var(--muted)}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+/* Reiter */
+.tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin:0 0 18px;scrollbar-width:thin}
+.tabs button{border:0;background:none;padding:12px 14px 10px;font:600 17px "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;display:flex;align-items:center;gap:8px}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--navy)}
+.badge{min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--org);color:#fff;font:700 12px "IBM Plex Sans",sans-serif;display:inline-flex;align-items:center;justify-content:center}
+.badge.g{background:var(--line);color:var(--ink)}
+/* Kennzahlen */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper);margin-bottom:18px}
+.kpi{padding:16px;border-left:1px solid var(--line);display:flex;flex-direction:column;gap:4px;text-align:left;background:none;border-top:0;border-right:0;border-bottom:0;font:inherit;color:inherit}
+.kpi:first-child{border-left:0}
+.kpi.o{background:var(--org);color:#fff}
+.kpi .l{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
+.kpi .v{font:700 32px/1.05 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:12px;opacity:.8}
+button.kpi{cursor:pointer}button.kpi:hover{background:var(--soft)}
+/* Tabellen */
+.tbl{background:var(--paper);border:1px solid var(--line);border-radius:10px;overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:12px;white-space:nowrap;border-bottom:1px solid var(--line)}
+td:first-child{min-width:190px}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--soft)}
+td .t{font-weight:600}td .sub{font-size:12px;color:var(--muted)}
+.empty{padding:32px;text-align:center;color:var(--muted)}
+.filters{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
+.filters label.f{flex:1 1 160px}
+.filters label.f.w{flex:2 1 240px}
+.count{font-size:13px;color:var(--muted);margin:0 0 10px}
+.sec{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 10px}
+.sec h2{margin:0;font-size:22px;letter-spacing:.04em;text-transform:uppercase}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:16px}
+.list .it{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.list .it:first-child{border-top:0}
+.list .it .grow{flex:1;min-width:0}
+.cards{display:flex;flex-direction:column;gap:8px}
+.mcard{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:12px}
+.mcard .grow{flex:1;min-width:0}
+.mcard .big{font:700 20px "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums;text-align:right}
+.bvgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-top:12px;border-top:1px solid var(--line);margin-top:12px}
+.kv div span{display:block;font-size:12px;color:var(--muted)}.kv div b{font-variant-numeric:tabular-nums}
+.meld{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
+/* Fenster */
+#ov{position:fixed;inset:0;background:rgba(10,16,24,.55);display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow:auto;z-index:50}
+#ov .box{background:var(--paper);color:var(--ink);border-radius:12px;border-top:4px solid var(--org);width:100%;max-width:640px;padding:20px;margin:24px 0;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+#ov .box.wide{max-width:760px}
+#ov h2{margin:0 0 4px;font-size:26px;color:var(--navy);letter-spacing:.03em;text-transform:uppercase}
+#ov h3{margin:16px 0 4px;font-size:18px;color:var(--navy)}
+#ov .foot{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:18px}
+#ov ol{padding-left:20px;margin:6px 0}
+.calc{padding:12px 14px;border-radius:8px;background:var(--soft);font-weight:500;font-size:14px}
+.calc.bad{background:var(--danger-soft);color:var(--danger)}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pills button{min-height:40px;padding:0 14px;border-radius:8px;border:1px solid var(--line);background:var(--paper);font-weight:600;cursor:pointer}
+.pills button[aria-pressed=true]{background:var(--navy);border-color:var(--navy);color:var(--navy-ink)}
+.step{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--paper)}
+.step button{width:48px;min-height:44px;border:0;background:none;font-size:22px;cursor:pointer}
+.step input{width:90px;border:0;text-align:center;font:700 20px "IBM Plex Sans",sans-serif;background:none;min-height:44px}
+/* Meldungen unten */
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:60;display:flex;flex-direction:column;gap:8px;width:min(560px,calc(100% - 32px))}
+#toast div{padding:12px 16px;border-radius:10px;font-weight:500;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.2);background:var(--ink);color:var(--paper)}
+#toast div.bad{background:var(--danger);color:#fff}
+#toast div.ok{background:var(--ok);color:#fff}
+.live{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.live i{width:8px;height:8px;border-radius:50%;background:var(--ok);display:inline-block}
+.live.off i{background:var(--danger)}
+@media (max-width:640px){.head h1{font-size:28px}.head img{width:48px;height:48px}.kpi .v{font-size:26px}.two{grid-template-columns:1fr}.wrap{padding:12px 12px 64px}.hide-s{display:none}}
+</style>
+</head><body>
+
+<div id="auth" hidden></div>
+<div id="app" hidden></div>
+<div id="toast" aria-live="polite"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ===================== Einstellungen ===================== */
+const SUPABASE_URL = "https://kxchnffcjsoxvjiiwbqw.supabase.co";
+const SUPABASE_KEY = "sb_publishable_OyhQl1vBPgMMoj12XRvS2w_MfhUBMqj";
+const MAIL = "preisflieger@outlook.com";
+const APP = "BAUFLIEGER";
+const PAKETE = [
+  {id:"start", l:"Start", b:5,  p:29.00},
+  {id:"team",  l:"Team",  b:15, p:49.00},
+  {id:"firma", l:"Firma", b:30, p:79.00}
+];
+const LAUFZEITEN = [{m:1,r:0,l:"1 Monat"},{m:3,r:.05,l:"3 Monate"},{m:6,r:.10,l:"6 Monate"},{m:12,r:.20,l:"12 Monate"}];
+const EINHEITEN = ["Stk.","m²","m³","lfm","kg","t","Sack","Rolle","Paket","Liter"];
+const MONATE = ["Jänner","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+const ARTEN = {
+  EINGANG:{l:"Eingang",c:"c-ok"}, AUSGABE:{l:"Ausgabe",c:"c-org"}, RETOURE:{l:"Retoure",c:"c-blue"},
+  RESERVIERT:{l:"Reserviert",c:"c-violet"}, RES_STORNO:{l:"Reservierung aufgehoben",c:"c-grey"}, KORREKTUR:{l:"Inventur",c:"c-grey"}
+};
+const ROLLEN = {admin:"Administrator", buero:"Büro", mitarbeiter:"Mitarbeiter"};
+
+/* ===================== Hilfen ===================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const nf = (v, d) => { const x = Number(v) || 0; const dd = d ?? (Math.round(x) === x ? 0 : 2); return x.toLocaleString("de-AT", {minimumFractionDigits: dd, maximumFractionDigits: dd}); };
+const eur = v => "€ " + nf(v, 2);
+const eurM = v => nf(v, 2) + " €";
+const num = v => { const s = String(v ?? "").trim().replace(/\s/g, ""); if (!s) return null; const x = parseFloat(s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s); return isNaN(x) ? null : x; };
+const deDate = iso => { if (!iso) return ""; const [y, m, d] = String(iso).slice(0, 10).split("-"); return d + "." + m + "." + y; };
+const deTime = ts => { const d = new Date(ts); return d.toLocaleDateString("de-AT", {day:"2-digit", month:"2-digit"}) + ", " + d.toLocaleTimeString("de-AT", {hour:"2-digit", minute:"2-digit"}); };
+const uniq = a => [...new Set(a.filter(x => x !== null && x !== undefined && x !== ""))].sort((x, y) => String(x).localeCompare(String(y), "de"));
+const ic = {
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+  xls:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>',
+  box:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>',
+  out:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>'
+};
+
+function toast(msg, kind){ const d = document.createElement("div"); d.className = kind || ""; d.textContent = msg; $("toast").appendChild(d); setTimeout(() => d.remove(), kind === "bad" ? 7000 : 4500); }
+function fehler(e){ const m = (e && (e.message || e.error_description || e.msg)) || String(e); toast(uebersetzen(m), "bad"); }
+function uebersetzen(m){
+  if (/Invalid login credentials/i.test(m)) return "E-Mail oder Passwort stimmt nicht.";
+  if (/already registered|already been registered/i.test(m)) return "Diese E-Mail ist schon registriert. Bitte unter „Anmelden“ einloggen.";
+  if (/Password should be at least/i.test(m)) return "Das Passwort muss mindestens 8 Zeichen haben.";
+  if (/Email not confirmed/i.test(m)) return "Die E-Mail-Adresse ist noch nicht bestätigt.";
+  if (/rate limit/i.test(m)) return "Zu viele Versuche – bitte kurz warten und erneut probieren.";
+  if (/Failed to fetch|NetworkError/i.test(m)) return "Keine Verbindung zum Server. Bitte Internet prüfen.";
+  return m;
+}
+
+/* ===================== Verbindung ===================== */
+if (!window.supabase || !window.supabase.createClient) {
+  document.body.innerHTML = '<div style="padding:24px;font-family:sans-serif"><h1>BAUFLIEGER</h1><p>Die App konnte nicht geladen werden. Bitte Internetverbindung prüfen und die Seite neu laden.</p></div>';
+  return;
+}
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {auth: {persistSession: true, autoRefreshToken: true}});
+async function rpc(name, args){ const {data, error} = await sb.rpc(name, args || {}); if (error) throw error; return data; }
+async function alle(table, order, asc){
+  let out = [], from = 0; const step = 1000;
+  for (;;) {
+    let q = sb.from(table).select("*").range(from, from + step - 1);
+    if (order) q = q.order(order, {ascending: !!asc});
+    const {data, error} = await q; if (error) throw error;
+    out = out.concat(data || []); if (!data || data.length < step) break; from += step;
+  }
+  return out;
+}
+
+/* ===================== Zustand ===================== */
+const S = {
+  user: null, me: null, liz: null,
+  artikel: [], preise: {}, bv: [], bew: [], meld: [], profile: [], einl: [], reserv: [], firmen: [], system: null,
+  tab: null, live: false,
+  f: { q:"", gruppe:"", herst:"", zeige:"vorhanden", jahr:"", monat:"", art:"", bvf:"", bvJahr:"", bvStatus:"laufend", bvq:"", mq:"" },
+  auth: "login", heute: new Date().toISOString().slice(0, 10)
+};
+const istBuero = () => S.me && (S.me.rolle === "admin" || S.me.rolle === "buero");
+const istAdmin = () => S.me && S.me.rolle === "admin";
+const istHersteller = () => S.me && S.me.hersteller;
+const darf = () => S.liz && S.liz.ok;
+const art = id => S.artikel.find(a => a.id === id);
+const bvName = id => { const b = S.bv.find(x => x.id === id); return b ? b.name : ""; };
+const artName = a => a ? a.hersteller + " " + a.name : "?";
+const ek = id => S.preise[id] || 0;
+
+function status(a){
+  const verf = Number(a.bestand) - Number(a.reserviert);
+  if (!a.aktiv) return {l:"Ausgeblendet", c:"c-grey", knapp:false};
+  if (Number(a.bestand) <= 0) return {l:"Nicht auf Lager", c:"c-grey", knapp:false};
+  if (verf <= 0) return {l:"Alles reserviert", c:"c-bad", knapp:true};
+  if (Number(a.mindestbestand) > 0 && verf < Number(a.mindestbestand)) return {l:"Unter Mindestbestand", c:"c-warn", knapp:true};
+  if (Number(a.pro_palette) > 0 && verf < Number(a.pro_palette)) return {l:"Unter 1 Palette", c:"c-warn", knapp:true};
+  return {l:"Verfügbar", c:"c-ok", knapp:false};
+}
+
+/* ===================== Start & Anmeldung ===================== */
+let gestartet = false;
+sb.auth.onAuthStateChange((ev, session) => {
+  if (ev === "SIGNED_OUT") { S.user = null; S.me = null; stopLive(); zeigeAuth(); return; }
+  if (S.reg) return;
+  if (session && session.user && (!S.user || S.user.id !== session.user.id)) { S.user = session.user; setTimeout(starte, 0); }
+});
+(async () => {
+  const {data} = await sb.auth.getSession();
+  if (data && data.session) { S.user = data.session.user; await starte(); } else zeigeAuth();
+  gestartet = true;
+})();
+
+let startNr = 0;
+async function starte(){
+  const nr = ++startNr;
+  try {
+    const {data, error} = await sb.from("profile").select("*").eq("id", S.user.id).maybeSingle();
+    if (error) throw error;
+    if (nr !== startNr) return;
+    S.me = data;
+    if (!S.me || !S.me.firma_id) { S.auth = S.auth === "invite" ? "invite" : "join"; zeigeAuth(); return; }
+    if (!S.me.aktiv) { S.auth = "inaktiv"; zeigeAuth(); return; }
+    await ladeAlles();
+    if (nr !== startNr) return;
+    S.tab = S.tab || (istBuero() ? "uebersicht" : "bestand");
+    $("auth").hidden = true; $("app").hidden = false;
+    render(); startLive();
+  } catch (e) { fehler(e); zeigeAuth(); }
+}
+
+function zeigeAuth(){
+  $("app").hidden = true; $("auth").hidden = false;
+  const t = S.auth, angemeldet = !!S.user;
+  const seg = angemeldet ? "" : `<div class="seg" role="tablist">
+      <button role="tab" aria-selected="${t==="login"}" data-auth="login">Anmelden</button>
+      <button role="tab" aria-selected="${t==="key"}" data-auth="key">Firma freischalten</button>
+      <button role="tab" aria-selected="${t==="invite"}" data-auth="invite">Einladung</button></div>`;
+  let body = "";
+  if (t === "inaktiv") {
+    body = `<div class="msg bad">Ihr Zugang wurde vom Administrator Ihrer Firma deaktiviert.</div><button class="btn" data-act="logout">Abmelden</button>`;
+  } else if (angemeldet && (t === "join" || t === "key" || t === "invite")) {
+    body = `<p class="msg info">Angemeldet als <b>${esc(S.user.email)}</b>. Dieses Konto gehört noch zu keiner Firma.</p>
+      <div class="seg" role="tablist"><button role="tab" aria-selected="${t!=="invite"}" data-auth="join">Lizenzschlüssel</button><button role="tab" aria-selected="${t==="invite"}" data-auth="invite">Einladungscode</button></div>
+      <form class="stack" id="fJoin">
+        ${t==="invite" ? `<label class="f"><span>Einladungscode</span><input class="in mono" name="code" required autocomplete="off" autocapitalize="characters" placeholder="XXXX-XXXX"></label>
+        <label class="f"><span>Telefon (optional)</span><input class="in" name="tel" type="tel" autocomplete="tel"></label>`
+        : `<label class="f"><span>Lizenzschlüssel</span><input class="in mono" name="key" required autocomplete="off" autocapitalize="characters" placeholder="XXXXXX-XXXXX-…"></label>`}
+        <label class="f"><span>Ihr Name</span><input class="in" name="name" required autocomplete="name"></label>
+        <button class="btn p">Freischalten</button>
+        <button type="button" class="btn" data-act="logout">Abmelden</button>
+      </form>`;
+  } else if (t === "key") {
+    body = `<form class="stack" id="fKey">
+        <p class="hint">Für die erste Person einer Firma. Den Lizenzschlüssel erhalten Sie von der Fa. PREISFLIEGER. Sie werden damit Administrator Ihrer Firma.</p>
+        <label class="f"><span>Lizenzschlüssel</span><input class="in mono" name="key" required autocomplete="off" autocapitalize="characters" placeholder="XXXXXX-XXXXX-…"></label>
+        <label class="f"><span>Ihr Name</span><input class="in" name="name" required autocomplete="name"></label>
+        <label class="f"><span>E-Mail</span><input class="in" name="email" type="email" required autocomplete="email"></label>
+        <label class="f"><span>Passwort (mind. 8 Zeichen)</span><input class="in" name="pw" type="password" minlength="8" required autocomplete="new-password"></label>
+        <button class="btn p">Konto anlegen und freischalten</button></form>`;
+  } else if (t === "invite") {
+    body = `<form class="stack" id="fInv">
+        <p class="hint">Den Einladungscode bekommen Sie vom Büro Ihrer Firma.</p>
+        <label class="f"><span>Einladungscode</span><input class="in mono" name="code" required autocomplete="off" autocapitalize="characters" placeholder="XXXX-XXXX"></label>
+        <label class="f"><span>Ihr Name</span><input class="in" name="name" required autocomplete="name"></label>
+        <label class="f"><span>Telefon (optional)</span><input class="in" name="tel" type="tel" autocomplete="tel"></label>
+        <label class="f"><span>E-Mail</span><input class="in" name="email" type="email" required autocomplete="email"></label>
+        <label class="f"><span>Passwort (mind. 8 Zeichen)</span><input class="in" name="pw" type="password" minlength="8" required autocomplete="new-password"></label>
+        <button class="btn p">Beitreten</button></form>`;
+  } else {
+    body = `<form class="stack" id="fLogin">
+        <label class="f"><span>E-Mail</span><input class="in" name="email" type="email" required autocomplete="username"></label>
+        <label class="f"><span>Passwort</span><input class="in" name="pw" type="password" required autocomplete="current-password"></label>
+        <button class="btn p">Anmelden</button>
+        <p class="hint">Passwort vergessen? Bitte beim Administrator Ihrer Firma bzw. bei der Fa. PREISFLIEGER melden.</p></form>`;
+  }
+  $("auth").innerHTML = `<div class="card">
+    <div class="brand"><img src="logo-192.png" alt="PREISFLIEGER"><div><h1>${APP}</h1><div class="hint">Lager · Baustellen · Material</div></div></div>
+    ${seg}${body}
+    <div class="row" style="margin-top:14px"><button class="btn s" data-act="preise">Preise &amp; Lizenz ansehen</button><button class="btn s" data-act="install">App aufs Handy</button></div>
+    <footer class="small">Fa. PREISFLIEGER · Martina Grünsteidl · ${MAIL}</footer></div>`;
+}
+
+async function registrieren(fd, pruefFn, pruefArg, einloesFn, einloesArgs){
+  const chk = await rpc(pruefFn, pruefArg);
+  if (!chk.ok) throw new Error(chk.fehler);
+  S.reg = true;
+  let data;
+  try { const r = await sb.auth.signUp({email: fd.get("email").trim(), password: fd.get("pw")}); if (r.error) throw r.error; data = r.data; }
+  finally { S.reg = false; }
+  if (!data.session) throw new Error("Konto angelegt, aber die E-Mail-Bestätigung ist in Supabase noch eingeschaltet. Bitte dort ausschalten (siehe Anleitung) oder die Bestätigungs-Mail öffnen und danach anmelden.");
+  S.user = data.session.user;
+  await rpc(einloesFn, einloesArgs);
+  toast("Willkommen bei " + chk.firma + "!", "ok");
+  await starte();
+}
+
+document.addEventListener("submit", async e => {
+  const f = e.target; if (!f.id) return;
+  e.preventDefault();
+  const fd = new FormData(f), btn = f.querySelector("button.p");
+  if (btn) btn.disabled = true;
+  try {
+    if (f.id === "fLogin") {
+      const {error} = await sb.auth.signInWithPassword({email: fd.get("email").trim(), password: fd.get("pw")});
+      if (error) throw error;
+    } else if (f.id === "fKey") {
+      await registrieren(fd, "schluessel_pruefen", {p_schluessel: fd.get("key")}, "schluessel_einloesen", {p_schluessel: fd.get("key"), p_name: fd.get("name")});
+    } else if (f.id === "fInv") {
+      await registrieren(fd, "einladung_pruefen", {p_code: fd.get("code")}, "einladung_einloesen", {p_code: fd.get("code"), p_name: fd.get("name"), p_telefon: fd.get("tel") || ""});
+    } else if (f.id === "fJoin") {
+      if (fd.get("code")) await rpc("einladung_einloesen", {p_code: fd.get("code"), p_name: fd.get("name"), p_telefon: fd.get("tel") || ""});
+      else await rpc("schluessel_einloesen", {p_schluessel: fd.get("key"), p_name: fd.get("name")});
+      await starte();
+    } else if (formHandler[f.id]) {
+      await formHandler[f.id](fd, f);
+    }
+  } catch (err) { fehler(err); }
+  finally { if (btn && document.body.contains(btn)) btn.disabled = false; }
+});
+
+/* ===================== Daten laden & live ===================== */
+async function ladeAlles(){
+  const t = [ladeLizenz(), ladeTab("artikel"), ladeTab("bauvorhaben"), ladeTab("meldungen"), ladeTab("profile")];
+  if (istBuero()) t.push(ladeTab("artikel_preise"), ladeTab("bewegungen"), ladeReserv());
+  if (istAdmin()) t.push(ladeTab("einladungen"));
+  if (istHersteller()) t.push(ladeHersteller());
+  await Promise.all(t);
+}
+async function ladeLizenz(){ S.liz = await rpc("meine_lizenz"); if (S.liz && S.liz.heute) S.heute = S.liz.heute; }
+async function ladeReserv(){ S.reserv = await rpc("reservierungen"); }
+async function ladeHersteller(){
+  const [f, sys] = await Promise.all([rpc("firmen_liste"), sb.from("system").select("*").maybeSingle()]);
+  S.firmen = f || []; S.system = sys.data;
+}
+async function ladeTab(t){
+  if (t === "artikel") S.artikel = await alle("artikel", "id", true);
+  else if (t === "artikel_preise") { const r = await alle("artikel_preise"); S.preise = {}; r.forEach(p => S.preise[p.artikel_id] = Number(p.ek)); }
+  else if (t === "bauvorhaben") S.bv = await alle("bauvorhaben", "id", true);
+  else if (t === "bewegungen") S.bew = await alle("bewegungen", "id", false);
+  else if (t === "meldungen") S.meld = await alle("meldungen", "id", false);
+  else if (t === "profile") { S.profile = await alle("profile", "erstellt", true); const m = S.profile.find(p => p.id === S.user.id); if (m) S.me = m; }
+  else if (t === "einladungen") S.einl = await alle("einladungen", "erstellt", false);
+}
+let kanal = null, wart = new Set(), timer = null;
+function startLive(){
+  stopLive();
+  kanal = sb.channel("bauflieger-" + S.me.firma_id)
+    .on("postgres_changes", {event: "*", schema: "public"}, p => {
+      if (p.table === "meldungen" && p.eventType === "INSERT" && istBuero() && p.new && p.new.von !== S.user.id) toast("Neue Meldung von " + (p.new.von_name || "Mitarbeiter") + " – unter „Eingänge“.", "");
+      wart.add(p.table); clearTimeout(timer); timer = setTimeout(nachladen, 350);
+    })
+    .subscribe(st => { S.live = st === "SUBSCRIBED"; const el = document.querySelector(".live"); if (el) { el.classList.toggle("off", !S.live); el.lastChild.textContent = S.live ? " live" : " offline"; } });
+}
+function stopLive(){ if (kanal) { sb.removeChannel(kanal); kanal = null; } }
+async function nachladen(){
+  const t = [...wart]; wart.clear();
+  try {
+    const jobs = [];
+    t.forEach(x => {
+      if (x === "firmen" || x === "system") { jobs.push(ladeLizenz()); if (istHersteller()) jobs.push(ladeHersteller()); }
+      else if (x === "artikel_preise" && !istBuero()) {}
+      else if (x === "bewegungen" && !istBuero()) {}
+      else if (["artikel","artikel_preise","bauvorhaben","bewegungen","meldungen","profile"].includes(x)) jobs.push(ladeTab(x));
+      if (x === "bewegungen" && istBuero()) jobs.push(ladeReserv());
+      if (x === "profile" && istHersteller()) jobs.push(ladeHersteller());
+    });
+    if (istAdmin() && t.includes("profile")) jobs.push(ladeTab("einladungen"));
+    await Promise.all(jobs);
+    if (S.me && !S.me.aktiv) { S.auth = "inaktiv"; stopLive(); zeigeAuth(); return; }
+    if (!$("ov")) render(); else renderKopf();
+  } catch (e) { console.warn(e); }
+}
+async function nachAktion(tabs){ tabs.forEach(t => wart.add(t)); await nachladen(); }
+
+/* ===================== Oberfläche ===================== */
+function tabsFuer(){
+  const t = [];
+  const offen = S.meld.filter(m => m.status === "offen");
+  if (istBuero()) {
+    t.push(["uebersicht","Übersicht"], ["bestand","Lagerbestand"], ["eingaenge","Eingänge", offen.length], ["bewegungen","Bewegungen"], ["bauvorhaben","Bauvorhaben"], ["melden","Melden"]);
+    if (istAdmin()) t.push(["benutzer","Benutzer"]);
+    if (istHersteller()) t.push(["hersteller","Hersteller"]);
+  } else {
+    t.push(["bestand","Lagerbestand"], ["melden","Material melden"], ["meine","Meine Meldungen", offen.filter(m => m.von === S.user.id).length]);
+  }
+  return t;
+}
+
+function render(){
+  const tabs = tabsFuer();
+  if (!tabs.find(x => x[0] === S.tab)) S.tab = tabs[0][0];
+  $("app").innerHTML = `<div class="wrap">
+    <div id="kopf"></div>
+    <nav class="tabs" role="tablist" aria-label="Bereiche">${tabs.map(t => `<button role="tab" aria-selected="${S.tab === t[0]}" data-tab="${t[0]}">${esc(t[1])}${t[2] ? ` <span class="badge">${t[2]}</span>` : ""}</button>`).join("")}</nav>
+    <main id="view"></main></div>`;
+  renderKopf();
+  const v = VIEWS[S.tab]; $("view").innerHTML = v ? v() : "";
+}
+
+function renderKopf(){
+  const k = $("kopf"); if (!k) return;
+  const L = S.liz || {};
+  let banner = "";
+  const tage = L.bis ? Math.round((new Date(L.bis + "T12:00:00") - new Date(S.heute + "T12:00:00")) / 864e5) : 0;
+  if (!L.ok) {
+    const grund = L.gesperrt ? "Der Zugang ist gesperrt" : (!L.app_an ? "Die App ist derzeit nicht verfügbar" : ((L.art === "lizenz" ? "Die Lizenz ist" : "Die Testzeit ist") + " am " + deDate(L.bis) + " abgelaufen"));
+    banner = `<div class="banner bad" role="alert"><span>${esc(grund)} – Lesen und Excel-Export gehen weiter, Änderungen sind gesperrt.</span><a data-act="preise">Preise &amp; Lizenz</a></div>`;
+  } else if (L.art === "test" || tage <= 30 || L.meldung) {
+    banner = `<div class="banner" role="status"><span>${L.art === "test" ? "Testversion" : "Lizenz"} für ${esc(L.firma)} · gültig bis ${deDate(L.bis)}${tage <= 30 ? " (noch " + tage + " Tag" + (tage === 1 ? "" : "e") + ")" : ""}</span>${L.meldung ? `<span>· ${esc(L.meldung)}</span>` : ""}<a data-act="preise">Preise &amp; Lizenz</a><a data-act="install">App aufs Handy</a></div>`;
+  }
+  const btns = istBuero()
+    ? `<button class="btn p" data-act="buchung" ${darf() ? "" : "disabled"}>${ic.plus} Neue Buchung</button><button class="btn" data-act="artikel" ${darf() ? "" : "disabled"}>${ic.box} Neuer Artikel</button><button class="btn" data-act="excel">${ic.xls} Als Excel speichern</button>`
+    : `<button class="btn p" data-tab="melden" ${darf() ? "" : "disabled"}>${ic.plus} Material ins Lager bringen</button><button class="btn" data-act="excel">${ic.xls} Bestand als Excel</button>`;
+  k.innerHTML = `${banner}<header class="head">
+    <div><div class="brand"><img src="logo-192.png" alt="PREISFLIEGER"><div><h1>${APP}</h1><div class="by">by <b>PREISFLIEGER</b> · ${esc(L.firma || "")} · Lager, Baustellen und Material im Griff</div></div></div>
+    <div class="actions">${btns}</div></div>
+    <div class="row"><span class="live ${S.live ? "" : "off"}" title="Änderungen anderer erscheinen sofort"><i></i> ${S.live ? "live" : "verbinde…"}</span>
+      <button class="user" data-act="profil" title="Mein Profil"><span class="who"><b>${esc(S.me.name || S.user.email)}</b><span>${ROLLEN[S.me.rolle]}${S.me.hersteller ? " · Hersteller" : ""}</span></span></button>
+      <button class="btn s" data-act="logout" title="Abmelden">${ic.out}<span class="hide-s">Abmelden</span></button></div></header>`;
+  // Reiter-Zähler aktualisieren
+  document.querySelectorAll(".tabs [data-tab]").forEach(b => {
+    const t = tabsFuer().find(x => x[0] === b.dataset.tab); if (!t) return;
+    let bd = b.querySelector(".badge"); if (t[2]) { if (!bd) { bd = document.createElement("span"); bd.className = "badge"; b.appendChild(bd); } bd.textContent = t[2]; } else if (bd) bd.remove();
+  });
+}
+
+/* ---------- Übersicht ---------- */
+const VIEWS = {};
+VIEWS.uebersicht = () => {
+  const akt = S.artikel.filter(a => a.aktiv);
+  const mit = akt.filter(a => Number(a.bestand) > 0);
+  let wert = 0, ohne = 0; mit.forEach(a => { if (ek(a.id)) wert += Number(a.bestand) * ek(a.id); else ohne++; });
+  const knapp = akt.filter(a => status(a).knapp);
+  const offen = S.meld.filter(m => m.status === "offen");
+  const letzte = S.bew.slice(0, 8);
+  return `<div class="kpis">
+      <div class="kpi o"><span class="l">Lagerwert</span><span class="v">${eurM(wert)}</span><span class="s">${ohne ? ohne + " Artikel ohne Preis nicht enthalten" : "zum Ø Mischpreis"}</span></div>
+      <button class="kpi" data-tab="bestand"><span class="l">Artikel auf Lager</span><span class="v">${mit.length}</span><span class="s">${akt.length} Artikel im Katalog</span></button>
+      <button class="kpi" data-tab="eingaenge"><span class="l">Offene Meldungen</span><span class="v">${offen.length}</span><span class="s">warten auf Zubuchung</span></button>
+      <button class="kpi" data-tab="bestand" data-zeige="knapp"><span class="l">Knapp</span><span class="v">${knapp.length}</span><span class="s">unter Mindestbestand / 1 Palette</span></button>
+    </div>
+    <div class="two">
+      <section class="card"><div class="sec"><h2>Knapp werdendes Material</h2><a href="#" data-tab="bestand" data-zeige="knapp">Alle</a></div>
+        <div class="list">${knapp.slice(0, 8).map(a => { const s = status(a); return `<div class="it"><div class="grow"><div class="t">${esc(artName(a))}</div><div class="sub mono">${esc(a.artnr)}</div></div><span class="num">${nf(a.bestand - a.reserviert)} ${esc(a.einheit)}</span><span class="chip ${s.c}">${s.l}</span></div>`; }).join("") || `<div class="empty">Nichts knapp – alles im grünen Bereich.</div>`}</div></section>
+      <section class="card"><div class="sec"><h2>Letzte Bewegungen</h2><a href="#" data-tab="bewegungen">Alle</a></div>
+        <div class="list">${letzte.map(b => `<div class="it"><span class="chip ${ARTEN[b.art].c}">${ARTEN[b.art].l}</span><div class="grow"><div class="t">${esc(artName(art(b.artikel_id)))}</div><div class="sub">${deDate(b.datum)} · ${esc(bvName(b.bauvorhaben_id) || b.lieferant || "Lager")} · ${esc(b.gebucht_name)}</div></div><span class="num">${mengeTxt(b)}</span></div>`).join("") || `<div class="empty">Noch keine Bewegungen.</div>`}</div></section>
+    </div>`;
+};
+function mengeTxt(b){ return nf(b.menge) + " " + (b.einheit === "Palette" ? (Number(b.menge) === 1 ? "Palette" : "Paletten") : esc(b.einheit)); }
+
+/* ---------- Bestand ---------- */
+VIEWS.bestand = () => {
+  const F = S.f, q = F.q.trim().toLowerCase(), buero = istBuero();
+  const gruppen = uniq(S.artikel.map(a => a.gruppe));
+  const herst = uniq(S.artikel.filter(a => !F.gruppe || a.gruppe === F.gruppe).map(a => a.hersteller));
+  let basis = S.artikel.filter(a => (!F.gruppe || a.gruppe === F.gruppe) && (!F.herst || a.hersteller === F.herst) && (!q || (a.name + " " + a.hersteller + " " + a.artnr + " " + a.gruppe).toLowerCase().includes(q)));
+  let rows = basis.filter(a => F.zeige === "alle" ? a.aktiv : F.zeige === "knapp" ? a.aktiv && status(a).knapp : F.zeige === "aus" ? !a.aktiv : a.aktiv && Number(a.bestand) > 0);
+  rows.sort((x, y) => (x.gruppe + x.hersteller + x.name).localeCompare(y.gruppe + y.hersteller + y.name, "de"));
+  const ausgebl = basis.filter(a => a.aktiv && Number(a.bestand) <= 0).length;
+  const filt = `<div class="filters">
+    <label class="f w"><span>Suche</span><input class="in" type="search" data-f="q" value="${esc(F.q)}" placeholder="Material, Hersteller oder Artikel-Nr."></label>
+    <label class="f"><span>Materialgruppe</span><select class="in" data-f="gruppe"><option value="">Alle Gruppen</option>${gruppen.map(g => `<option ${g === F.gruppe ? "selected" : ""}>${esc(g)}</option>`).join("")}</select></label>
+    <label class="f"><span>Hersteller</span><select class="in" data-f="herst"><option value="">Alle Hersteller</option>${herst.map(g => `<option ${g === F.herst ? "selected" : ""}>${esc(g)}</option>`).join("")}</select></label>
+    <label class="f"><span>Anzeigen</span><select class="in" data-f="zeige">${[["vorhanden","Nur was im Lager ist"],["knapp","Nur knappes Material"],["alle","Ganzer Katalog"]].concat(buero ? [["aus","Ausgeblendete Artikel"]] : []).map(o => `<option value="${o[0]}" ${o[0] === F.zeige ? "selected" : ""}>${o[1]}</option>`).join("")}</select></label></div>
+    <p class="count">${rows.length} Artikel${F.zeige === "vorhanden" && ausgebl ? ` · ${ausgebl} ohne Bestand ausgeblendet (»Anzeigen« → Ganzer Katalog)` : ""}</p>`;
+  if (!buero) {
+    return filt + `<div class="cards">${rows.map(a => { const s = status(a), v = Number(a.bestand) - Number(a.reserviert); return `<div class="mcard"><div class="grow"><div class="t" style="font-weight:600">${esc(a.name)}</div><div class="sub muted" style="font-size:13px">${esc(a.hersteller)} · ${esc(a.gruppe)}${a.pro_palette > 0 ? " · ca. " + nf(v / a.pro_palette, 1) + " Paletten" : ""}</div></div><div style="text-align:right"><div class="big">${nf(v)} ${esc(a.einheit)}</div><span class="chip ${s.c}">${s.l}</span></div></div>`; }).join("") || `<div class="empty card">Kein Material in dieser Auswahl.</div>`}</div>`;
+  }
+  return filt + `<div class="tbl"><table><thead><tr><th>Material</th><th>Artikel-Nr.</th><th class="num">Bestand</th><th class="num">Reserviert</th><th class="num">Verfügbar</th><th class="num">Paletten</th><th class="num">Ø Mischpreis</th><th class="num">Lagerwert</th><th>Status</th><th><span class="sr">Aktionen</span></th></tr></thead><tbody>
+    ${rows.map(a => { const s = status(a), v = Number(a.bestand) - Number(a.reserviert), p = ek(a.id); return `<tr>
+      <td><div class="t">${esc(a.name)}</div><div class="sub">${esc(a.hersteller)} · ${esc(a.gruppe)}</div></td>
+      <td class="mono">${esc(a.artnr) || "–"}</td>
+      <td class="num">${nf(a.bestand)} ${esc(a.einheit)}</td>
+      <td class="num" style="color:var(--violet-ink)">${Number(a.reserviert) ? nf(a.reserviert) : "–"}</td>
+      <td class="num"><b>${nf(v)}</b></td>
+      <td class="num">${a.pro_palette > 0 ? nf(a.bestand / a.pro_palette, 1) : "–"}</td>
+      <td class="num">${p ? eur(p) : '<span class="chip c-warn">Preis fehlt</span>'}</td>
+      <td class="num">${p ? eur(p * a.bestand) : "–"}</td>
+      <td><span class="chip ${s.c}">${s.l}</span></td>
+      <td><div class="row" style="flex-wrap:nowrap"><button class="btn s" data-act="artikel" data-id="${a.id}" ${darf() ? "" : "disabled"}>Bearbeiten</button><button class="btn s" data-act="inventur" data-id="${a.id}" ${darf() ? "" : "disabled"}>Inventur</button></div></td></tr>`; }).join("")}
+    </tbody></table>${rows.length ? "" : `<div class="empty">Kein Material in dieser Auswahl.</div>`}</div>
+    <p class="hint" style="margin-top:10px">Ø Mischpreis = gleitender Durchschnitt aus Eingängen und Retouren, gewichtet nach Menge. Ausgaben werden zum Mischpreis des Buchungstages bewertet; der Preis jeder Buchung bleibt fixiert.</p>`;
+};
+
+/* ---------- Eingänge ---------- */
+VIEWS.eingaenge = () => {
+  const offen = S.meld.filter(m => m.status === "offen");
+  const fertig = S.meld.filter(m => m.status !== "offen").slice(0, 10);
+  return `<p class="hint" style="margin:0 0 14px">Meldungen von Lager und Baustelle. Erst nach Prüfung und Zubuchung durch das Büro ändert sich der Lagerstand.</p>
+   <div class="cards">${offen.map(m => { const a = art(m.artikel_id); const p = ek(m.artikel_id); return `<article class="card meld">
+      <div style="flex:1 1 320px;min-width:0"><div class="row"><span class="chip ${m.art === "LIEFERUNG" ? "c-ok" : "c-blue"}">${m.art === "LIEFERUNG" ? "Lieferung" : "Retoure"}</span><span class="muted" style="font-size:13px">${deTime(m.erstellt)} · von ${esc(m.von_name)}</span></div>
+        <div style="font-size:18px;font-weight:600;margin-top:6px">${esc(artName(a))}</div>
+        <div class="muted" style="font-size:14px"><b style="color:var(--ink)">${mengeTxt(m)}</b> (${nf(m.stueck)} ${esc(a ? a.einheit : "")}) · ${m.bauvorhaben_id ? "von Baustelle " + esc(bvName(m.bauvorhaben_id)) : "Wareneingang"}</div>
+        ${m.notiz ? `<div class="muted" style="font-style:italic;margin-top:4px">»${esc(m.notiz)}«</div>` : ""}</div>
+      <div class="row" style="align-items:flex-end">
+        <label class="f" style="width:150px"><span>Preis je ${esc(a ? a.einheit : "Stk.")} €</span><input class="in num" inputmode="decimal" data-preis="${m.id}" value="${p ? nf(p, 2) : ""}" placeholder="ohne Preis"></label>
+        <button class="btn" data-act="ablehnen" data-id="${m.id}" ${darf() ? "" : "disabled"}>Ablehnen</button>
+        <button class="btn p" data-act="zubuchen" data-id="${m.id}" ${darf() ? "" : "disabled"}>Prüfen &amp; zubuchen</button></div>
+      <div class="hint" style="flex-basis:100%" data-misch="${m.id}">${mischTxt(m, p)}</div></article>`; }).join("") || `<div class="card empty">Alles erledigt – keine offenen Meldungen.</div>`}</div>
+   ${fertig.length ? `<h2 class="cond" style="margin:24px 0 8px;text-transform:uppercase;letter-spacing:.04em">Zuletzt bearbeitet</h2><div class="tbl"><table><tbody>${fertig.map(m => `<tr><td><span class="chip ${m.status === "gebucht" ? "c-ok" : "c-bad"}">${m.status === "gebucht" ? "Gebucht" : "Abgelehnt"}</span></td><td>${esc(artName(art(m.artikel_id)))}<div class="sub">${mengeTxt(m)} · von ${esc(m.von_name)}</div></td><td class="sub">${m.erledigt_am ? deTime(m.erledigt_am) : ""} · ${esc(m.erledigt_von)}${m.grund ? " · " + esc(m.grund) : ""}</td></tr>`).join("")}</tbody></table></div>` : ""}`;
+};
+function mischTxt(m, preis){
+  const a = art(m.artikel_id); if (!a) return "";
+  const alt = ek(a.id), b = Number(a.bestand), stk = Number(m.stueck);
+  if (!preis) return alt ? "Ohne Preis wird der Mischpreis nicht verändert (" + eur(alt) + ")." : "Ohne Preis – Artikel bleibt ohne Mischpreis.";
+  const neu = alt > 0 && b > 0 ? (b * alt + stk * preis) / (b + stk) : preis;
+  return "Neuer Ø Mischpreis: <b>" + eur(neu) + "</b>" + (alt ? " (bisher " + eur(alt) + ")" : " (bisher kein Preis)") + " · danach im Lager " + nf(b + stk) + " " + esc(a.einheit);
+}
+
+/* ---------- Bewegungen ---------- */
+VIEWS.bewegungen = () => {
+  const F = S.f, jahre = uniq(S.bew.map(b => String(b.datum).slice(0, 4)).concat([S.heute.slice(0, 4)])).reverse();
+  if (!F.jahr) F.jahr = S.heute.slice(0, 4);
+  const mq = F.mq.trim().toLowerCase();
+  const rows = S.bew.filter(b => (F.jahr === "alle" || String(b.datum).startsWith(F.jahr)) && (!F.monat || String(b.datum).slice(5, 7) === F.monat) && (!F.art || b.art === F.art) && (!F.bvf || String(b.bauvorhaben_id) === F.bvf) && (!mq || artName(art(b.artikel_id)).toLowerCase().includes(mq)))
+    .sort((x, y) => x.datum < y.datum ? 1 : x.datum > y.datum ? -1 : y.id - x.id);
+  const bvs = S.bv.slice().sort((a, b) => a.name.localeCompare(b.name, "de"));
+  return `<div class="filters">
+    <label class="f"><span>Jahr</span><select class="in" data-f="jahr">${jahre.map(j => `<option ${j === F.jahr ? "selected" : ""}>${j}</option>`).join("")}<option value="alle" ${F.jahr === "alle" ? "selected" : ""}>Alle Jahre</option></select></label>
+    <label class="f"><span>Monat</span><select class="in" data-f="monat"><option value="">Ganzes Jahr</option>${MONATE.map((m, i) => { const v = String(i + 1).padStart(2, "0"); return `<option value="${v}" ${v === F.monat ? "selected" : ""}>${m}</option>`; }).join("")}</select></label>
+    <label class="f"><span>Art</span><select class="in" data-f="art"><option value="">Alle Arten</option>${Object.keys(ARTEN).map(k => `<option value="${k}" ${k === F.art ? "selected" : ""}>${ARTEN[k].l}</option>`).join("")}</select></label>
+    <label class="f"><span>Bauvorhaben</span><select class="in" data-f="bvf"><option value="">Alle</option>${bvs.map(b => `<option value="${b.id}" ${String(b.id) === F.bvf ? "selected" : ""}>${esc(b.name)}</option>`).join("")}</select></label>
+    <label class="f w"><span>Material</span><input class="in" type="search" data-f="mq" value="${esc(F.mq)}" placeholder="Material suchen"></label></div>
+   <p class="count">${rows.length} Bewegung${rows.length === 1 ? "" : "en"} · Ein neues Jahr erscheint automatisch, sobald darin gebucht wird.</p>
+   <div class="tbl"><table><thead><tr><th>Datum</th><th>Art</th><th>Material</th><th>Bauvorhaben / Lieferant</th><th class="num">Menge</th><th class="num">Grundeinheit</th><th class="num">Preis</th><th class="num">Wert</th><th>Gebucht von</th></tr></thead><tbody>
+   ${rows.slice(0, 500).map(b => { const a = art(b.artikel_id); return `<tr><td class="num">${deDate(b.datum)}</td><td><span class="chip ${ARTEN[b.art].c}">${ARTEN[b.art].l}</span></td><td><div class="t">${esc(artName(a))}</div>${b.bemerkung ? `<div class="sub">${esc(b.bemerkung)}</div>` : ""}</td><td>${esc(bvName(b.bauvorhaben_id) || b.lieferant || "–")}</td><td class="num">${mengeTxt(b)}</td><td class="num">${nf(b.stueck)} ${esc(a ? a.einheit : "")}</td><td class="num">${b.preis != null ? eur(b.preis) : "–"}</td><td class="num">${b.preis != null ? eur(b.preis * Math.abs(b.stueck)) : "–"}</td><td class="sub">${esc(b.gebucht_name)}</td></tr>`; }).join("")}
+   </tbody></table>${rows.length ? "" : `<div class="empty">Keine Bewegungen in dieser Auswahl.</div>`}${rows.length > 500 ? `<div class="empty">Es werden die neuesten 500 angezeigt – bitte Filter verwenden oder als Excel speichern.</div>` : ""}</div>`;
+};
+
+/* ---------- Bauvorhaben ---------- */
+VIEWS.bauvorhaben = () => {
+  const F = S.f, jahre = uniq(S.bv.map(b => String(b.beginn).slice(0, 4)).concat(S.bew.map(b => String(b.datum).slice(0, 4))).concat([S.heute.slice(0, 4)])).reverse();
+  if (!F.bvJahr) F.bvJahr = S.heute.slice(0, 4);
+  const q = F.bvq.trim().toLowerCase(), J = F.bvJahr;
+  const rows = S.bv.filter(b => (F.bvStatus === "alle" || b.status === F.bvStatus) && (!q || (b.nr + " " + b.name + " " + b.ort + " " + b.kunde).toLowerCase().includes(q))
+    && (J === "alle" || String(b.beginn).startsWith(J) || S.bew.some(m => m.bauvorhaben_id === b.id && String(m.datum).startsWith(J))))
+    .sort((a, b) => (b.nr || "").localeCompare(a.nr || "", "de"));
+  const resPos = id => S.reserv.filter(r => r.bauvorhaben_id === id);
+  return `<div class="filters">
+    <label class="f"><span>Jahr</span><select class="in" data-f="bvJahr">${jahre.map(j => `<option ${j === J ? "selected" : ""}>${j}</option>`).join("")}<option value="alle" ${J === "alle" ? "selected" : ""}>Alle Jahre</option></select></label>
+    <label class="f"><span>Status</span><select class="in" data-f="bvStatus">${[["laufend","Laufend"],["abgeschlossen","Abgeschlossen"],["alle","Alle"]].map(o => `<option value="${o[0]}" ${o[0] === F.bvStatus ? "selected" : ""}>${o[1]}</option>`).join("")}</select></label>
+    <label class="f w"><span>Suche</span><input class="in" type="search" data-f="bvq" value="${esc(F.bvq)}" placeholder="Name, Ort, Kunde oder Nummer"></label>
+    <button class="btn p" data-act="bv" ${darf() ? "" : "disabled"}>${ic.plus} Neues Bauvorhaben</button></div>
+   <p class="count">${rows.length} Bauvorhaben${J !== "alle" ? " mit Beginn oder Buchungen in " + J : ""} · Kosten zu den fixierten Buchungspreisen${J !== "alle" ? " in " + J : ""}</p>
+   <div class="bvgrid">${rows.map(b => {
+      let aus = 0, ret = 0, n = 0;
+      S.bew.forEach(m => { if (m.bauvorhaben_id !== b.id || (J !== "alle" && !String(m.datum).startsWith(J))) return; const w = (m.preis || 0) * m.stueck; if (m.art === "AUSGABE") { aus += w; n++; } if (m.art === "RETOURE") { ret += w; n++; } });
+      const rp = resPos(b.id), done = b.status === "abgeschlossen";
+      return `<article class="card"><div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><div class="sub mono muted" style="font-size:12px">${esc(b.nr)} · seit ${deDate(b.beginn)}</div><div style="font-size:18px;font-weight:600">${esc(b.name)}</div><div class="muted" style="font-size:14px">${esc([b.ort, b.kunde].filter(Boolean).join(" · ") || "–")}</div></div><span class="chip ${done ? "c-grey" : "c-ok"}">${done ? "Abgeschlossen" : "Laufend"}</span></div>
+       <div class="kv"><div><span>Ausgegeben</span><b>${eur(aus)}</b></div><div><span>Retour</span><b>${eur(ret)}</b></div><div><span>Materialkosten netto</span><b>${eur(aus - ret)}</b></div><div><span>Offen reserviert</span><b style="color:var(--violet-ink)">${rp.length ? rp.length + " Position" + (rp.length === 1 ? "" : "en") : "–"}</b></div></div>
+       ${rp.length ? `<div class="sub muted" style="font-size:12px;margin-top:8px">${rp.map(r => esc(artName(art(r.artikel_id))) + ": " + nf(r.stueck)).join(" · ")}</div>` : ""}
+       <div class="row" style="margin-top:12px"><button class="btn s" data-act="bvbew" data-id="${b.id}">Bewegungen (${n})</button><button class="btn s" data-act="bv" data-id="${b.id}" ${darf() ? "" : "disabled"}>Bearbeiten</button><button class="btn s" data-act="bvstatus" data-id="${b.id}" ${darf() ? "" : "disabled"}>${done ? "Wieder öffnen" : "Abschließen"}</button></div></article>`; }).join("")}</div>
+   ${rows.length ? "" : `<div class="card empty">Keine Bauvorhaben in dieser Auswahl.</div>`}`;
+};
+
+/* ---------- Melden ---------- */
+let M = {art: "RETOURE", artikel: "", menge: 1, einheit: "Palette", bv: "", notiz: ""};
+VIEWS.melden = () => {
+  const akt = S.artikel.filter(a => a.aktiv).sort((x, y) => (x.gruppe + x.hersteller + x.name).localeCompare(y.gruppe + y.hersteller + y.name, "de"));
+  if (!M.artikel && akt[0]) M.artikel = String(akt[0].id);
+  const a = art(Number(M.artikel)), eh = a && a.pro_palette > 0 ? ["Palette", a.einheit] : [a ? a.einheit : "Stk."];
+  if (!eh.includes(M.einheit)) M.einheit = eh[0];
+  const lauf = S.bv.filter(b => b.status === "laufend").sort((x, y) => x.name.localeCompare(y.name, "de"));
+  const stk = M.einheit === "Palette" && a ? M.menge * a.pro_palette : M.menge;
+  return `<form id="fMeld" class="card stack" style="max-width:640px">
+    <div><span class="cond" style="font-size:22px;font-weight:700;text-transform:uppercase;letter-spacing:.04em">Was bringst du ins Lager?</span><p class="hint" style="margin:4px 0 0">Die Meldung geht ans Büro. Erst nach dem Zubuchen ändert sich der Bestand.</p></div>
+    <div class="pills" role="group" aria-label="Art"><button type="button" data-m="art" data-v="RETOURE" aria-pressed="${M.art === "RETOURE"}">Retoure von Baustelle</button><button type="button" data-m="art" data-v="LIEFERUNG" aria-pressed="${M.art === "LIEFERUNG"}">Lieferung vom Händler</button></div>
+    <label class="f"><span>Material</span><select class="in" data-m="artikel">${gruppenOptionen(akt, M.artikel, false)}</select></label>
+    <div class="row" style="align-items:flex-end"><div class="f" style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Menge</span>
+      <div class="step"><button type="button" data-m="minus" aria-label="Weniger">−</button><input inputmode="decimal" data-m="menge" value="${nf(M.menge)}" aria-label="Menge"><button type="button" data-m="plus" aria-label="Mehr">+</button></div></div>
+      <div class="pills" role="group" aria-label="Einheit">${eh.map(e => `<button type="button" data-m="einheit" data-v="${esc(e)}" aria-pressed="${M.einheit === e}">${esc(e)}</button>`).join("")}</div></div>
+    <p class="hint" style="margin:0">= ${nf(stk)} ${esc(a ? a.einheit : "")}${M.einheit === "Palette" && a ? " (" + nf(a.pro_palette) + " je Palette)" : ""}</p>
+    ${M.art === "RETOURE" ? `<label class="f"><span>Von welcher Baustelle?</span><select class="in" data-m="bv" required><option value="">Bitte wählen</option>${lauf.map(b => `<option value="${b.id}" ${String(b.id) === M.bv ? "selected" : ""}>${esc(b.name)}${b.ort ? " · " + esc(b.ort) : ""}</option>`).join("")}</select></label>` : ""}
+    <label class="f"><span>Notiz (optional)</span><textarea class="in" data-m="notiz" placeholder="z. B. Zustand, Lagerplatz, Lieferschein-Nr.">${esc(M.notiz)}</textarea></label>
+    <button class="btn p" style="min-height:52px;font-size:17px" ${darf() ? "" : "disabled"}>An Büro melden</button></form>`;
+};
+VIEWS.meine = () => {
+  const mine = S.meld.filter(m => m.von === S.user.id);
+  return `<div class="cards">${mine.map(m => `<div class="mcard"><div class="grow"><div style="font-weight:600">${mengeTxt(m)} ${esc(artName(art(m.artikel_id)))}</div><div class="muted" style="font-size:13px">${m.art === "LIEFERUNG" ? "Lieferung" : "Retoure · " + esc(bvName(m.bauvorhaben_id))} · ${deTime(m.erstellt)}${m.grund ? " · " + esc(m.grund) : ""}</div></div><span class="chip ${m.status === "offen" ? "c-org" : m.status === "gebucht" ? "c-ok" : "c-bad"}">${m.status === "offen" ? "Wartet auf Büro" : m.status === "gebucht" ? "Zugebucht" : "Abgelehnt"}</span></div>`).join("") || `<div class="card empty">Noch keine Meldungen.</div>`}</div>`;
+};
+function gruppenOptionen(liste, sel, mitBestand){
+  const g = uniq(liste.map(a => a.gruppe));
+  return g.map(gr => `<optgroup label="${esc(gr)}">${liste.filter(a => a.gruppe === gr).map(a => `<option value="${a.id}" ${String(a.id) === String(sel) ? "selected" : ""}>${esc(a.hersteller + " – " + a.name)}${mitBestand ? " · frei " + nf(a.bestand - a.reserviert) + " " + esc(a.einheit) : ""}</option>`).join("")}</optgroup>`).join("");
+}
+
+/* ---------- Benutzer ---------- */
+VIEWS.benutzer = () => {
+  const L = S.liz || {}, aktiv = S.profile.filter(p => p.aktiv).length;
+  const offen = S.einl.filter(e => !e.benutzt_am && new Date(e.gueltig_bis) > new Date());
+  return `<div class="two">
+   <section class="card"><div class="sec"><h2>Benutzer</h2><span class="chip ${aktiv >= L.max_benutzer ? "c-warn" : "c-grey"}">${aktiv} von ${L.max_benutzer} · Paket ${esc((PAKETE.find(p => p.id === L.paket) || {}).l || L.paket)}</span></div>
+    <div class="list">${S.profile.map(p => `<div class="it" style="flex-wrap:wrap"><div class="grow"><div class="t" style="font-weight:600">${esc(p.name)}${p.id === S.user.id ? " (Sie)" : ""}</div><div class="sub muted" style="font-size:13px">${esc(p.email)}${p.telefon ? ` · <a href="tel:${esc(p.telefon.replace(/[^0-9+]/g, ""))}">${esc(p.telefon)}</a>` : ""}</div></div>
+      <select class="in" style="width:160px" data-rolle="${p.id}" ${darf() ? "" : "disabled"} aria-label="Rolle von ${esc(p.name)}">${Object.keys(ROLLEN).map(r => `<option value="${r}" ${r === p.rolle ? "selected" : ""}>${ROLLEN[r]}</option>`).join("")}</select>
+      <button class="btn s ${p.aktiv ? "d" : ""}" data-act="aktiv" data-id="${p.id}" ${darf() ? "" : "disabled"}>${p.aktiv ? "Deaktivieren" : "Aktivieren"}</button></div>`).join("")}</div>
+    <p class="hint">Mitarbeiter sehen Bestand und Baustellen, aber keine Preise, keinen Lagerwert und keine Buchungen. Büro und Administrator dürfen buchen; nur Administratoren verwalten Benutzer.</p></section>
+   <section class="card"><div class="sec"><h2>Einladen</h2></div>
+    <form id="fEinl" class="row" style="align-items:flex-end"><label class="f" style="flex:1"><span>Rolle</span><select class="in" name="rolle"><option value="mitarbeiter">Mitarbeiter (ohne Preise)</option><option value="buero">Büro</option><option value="admin">Administrator</option></select></label><button class="btn p" ${darf() ? "" : "disabled"}>Einladungscode erzeugen</button></form>
+    <div id="einlOut"></div>
+    <h3 class="cond" style="margin:18px 0 6px;font-size:18px;text-transform:uppercase;letter-spacing:.04em">Offene Einladungen</h3>
+    <div class="list">${offen.map(e => `<div class="it"><span class="mono" style="font-weight:600">${e.code.slice(0, 4)}-${e.code.slice(4)}</span><div class="grow muted" style="font-size:13px">${ROLLEN[e.rolle]} · gültig bis ${deDate(e.gueltig_bis)}</div><button class="btn s d" data-act="einlDel" data-id="${e.code}">Löschen</button></div>`).join("") || `<div class="muted">Keine offenen Einladungen.</div>`}</div>
+    <p class="hint">Jeder Code gilt für eine Person und 14 Tage. Die Person öffnet die App, wählt „Einladung“ und gibt den Code ein.</p></section></div>`;
+};
+
+/* ---------- Hersteller ---------- */
+VIEWS.hersteller = () => {
+  const sys = S.system || {app_an: true, meldung: ""};
+  return `<section class="card" style="border-color:var(--org);background:var(--org-soft);margin-bottom:16px"><b>Nur für die Fa. PREISFLIEGER.</b> Änderungen gelten sofort für die Kunden – kein Hochladen einer status.json nötig.</section>
+   <section class="card" style="margin-bottom:16px"><div class="sec"><h2>Neuer Kunde</h2></div>
+    <form id="fFirma" class="row" style="align-items:flex-end">
+      <label class="f" style="flex:2 1 220px"><span>Kunde / Firma</span><input class="in" name="name" required placeholder="z. B. Bau Huber GmbH"></label>
+      <label class="f" style="flex:1 1 150px"><span>Paket</span><select class="in" name="paket">${PAKETE.map(p => `<option value="${p.id}">${p.l} – bis ${p.b} Benutzer</option>`).join("")}<option value="individuell">Individuell – bis 100</option></select></label>
+      <label class="f" style="flex:1 1 170px"><span>Laufzeit</span><select class="in" name="lz"><option value="t30">Test – 30 Tage</option><option value="m1">Lizenz – 1 Monat</option><option value="m3">Lizenz – 3 Monate</option><option value="m6">Lizenz – 6 Monate</option><option value="m12">Lizenz – 12 Monate</option></select></label>
+      <button class="btn p">Schlüssel erzeugen</button></form><div id="firmaOut"></div></section>
+   <section class="card" style="margin-bottom:16px"><div class="sec"><h2>Kunden</h2></div><div class="tbl" style="border:0"><table><thead><tr><th>Kunde</th><th>Lizenzschlüssel</th><th>Paket</th><th class="num">Benutzer</th><th>Gültig bis</th><th>Status</th><th>Aktionen</th></tr></thead><tbody>
+    ${S.firmen.map(f => { const t = Math.round((new Date(f.lizenz_bis + "T12:00:00") - new Date(S.heute + "T12:00:00")) / 864e5); const st = f.gesperrt ? '<span class="chip c-bad">gesperrt</span>' : t < 0 ? '<span class="chip c-bad">abgelaufen</span>' : `<span class="chip c-ok">aktiv</span>${t <= 30 ? ` <span class="chip c-warn">läuft in ${t} Tag${t === 1 ? "" : "en"} ab</span>` : ""}`;
+      return `<tr><td><div class="t">${esc(f.name)}</div><div class="sub">${f.lizenz_art === "lizenz" ? "Lizenz" : "Test"}${f.notiz ? " · " + esc(f.notiz) : ""}</div></td>
+       <td><span class="mono" style="font-size:13px">${esc(f.schluessel || "–")}</span><div class="sub">${f.eingeloest ? "eingelöst" : "noch nicht verwendet"}</div></td>
+       <td><select class="in" style="min-width:110px" data-paket="${f.id}">${PAKETE.map(p => `<option value="${p.id}" ${p.id === f.paket ? "selected" : ""}>${p.l}</option>`).join("")}<option value="individuell" ${f.paket === "individuell" ? "selected" : ""}>Individuell</option></select></td>
+       <td class="num">${f.benutzer} / ${f.max_benutzer}</td><td class="num">${deDate(f.lizenz_bis)}</td><td>${st}</td>
+       <td><div class="row" style="flex-wrap:nowrap"><button class="btn s" data-act="kopieren" data-v="${esc(f.schluessel || "")}">Kopieren</button>
+        <select class="in" style="width:120px;min-height:36px" id="ex-${f.id}" aria-label="Verlängern um"><option value="1">1 Monat</option><option value="3">3 Monate</option><option value="6">6 Monate</option><option value="12" selected>12 Monate</option></select>
+        <button class="btn s" data-act="verl" data-id="${f.id}">Verlängern</button>
+        <button class="btn s ${f.gesperrt ? "" : "d"}" data-act="sperr" data-id="${f.id}">${f.gesperrt ? "Entsperren" : "Sperren"}</button>
+        <button class="btn s" data-act="neuKey" data-id="${f.id}">Neuer Schlüssel</button></div></td></tr>`; }).join("")}
+    </tbody></table></div></section>
+   <section class="card"><div class="sec"><h2>Hauptschalter und Meldung</h2></div>
+    <form id="fSys" class="stack"><label class="row" style="gap:10px"><input type="checkbox" name="an" ${sys.app_an ? "checked" : ""} style="width:20px;height:20px"> App für alle Kunden freigegeben (Haken raus = alle sofort nur noch lesen)</label>
+    <label class="f"><span>Meldung (erscheint oben in der App bei allen Kunden, optional)</span><input class="in" name="msg" value="${esc(sys.meldung)}" placeholder="z. B. Wartung heute ab 18 Uhr"></label>
+    <div><button class="btn p">Speichern</button></div></form></section>`;
+};
+
+/* ===================== Fenster ===================== */
+function fenster(html, wide){
+  schliessen();
+  const w = document.createElement("div"); w.id = "ov";
+  w.innerHTML = `<div class="box ${wide ? "wide" : ""}" role="dialog" aria-modal="true">${html}</div>`;
+  w.addEventListener("mousedown", e => { if (e.target === w) schliessen(); });
+  document.body.appendChild(w);
+  const first = w.querySelector("input:not([type=hidden]),select,textarea"); if (first) setTimeout(() => first.focus(), 30);
+}
+function schliessen(){ const o = $("ov"); if (o) { o.remove(); if (!$("app").hidden) render(); } }
+document.addEventListener("keydown", e => { if (e.key === "Escape" && $("ov")) schliessen(); });
+
+/* Neue Buchung */
+let B = null;
+function buchungFenster(){
+  const akt = S.artikel.filter(a => a.aktiv).sort((x, y) => (x.gruppe + x.hersteller + x.name).localeCompare(y.gruppe + y.hersteller + y.name, "de"));
+  if (!B) B = {art: "AUSGABE", datum: S.heute, artikel: akt[0] ? String(akt[0].id) : "", bv: "", lief: "", menge: "1", einheit: "", preis: ""};
+  const a = art(Number(B.artikel)); const eh = a && a.pro_palette > 0 ? ["Palette", a.einheit] : [a ? a.einheit : "Stk."];
+  if (!eh.includes(B.einheit)) B.einheit = eh[0];
+  const lauf = S.bv.filter(b => b.status === "laufend").sort((x, y) => x.name.localeCompare(y.name, "de"));
+  const brauchtBv = B.art !== "EINGANG", brauchtPreis = B.art === "EINGANG" || B.art === "RETOURE";
+  fenster(`<h2>Neue Buchung</h2><form id="fBuch" class="stack" style="margin-top:12px">
+    <div class="grid">
+      <label class="f"><span>Art</span><select class="in" name="art" data-b="art">${[["AUSGABE","Ausgabe an Baustelle"],["RETOURE","Retoure von Baustelle"],["EINGANG","Wareneingang vom Lieferanten"],["RESERVIERT","Reservierung für Baustelle"],["RES_STORNO","Reservierung aufheben"]].map(o => `<option value="${o[0]}" ${o[0] === B.art ? "selected" : ""}>${o[1]}</option>`).join("")}</select></label>
+      <label class="f"><span>Datum</span><input class="in" type="date" name="datum" data-b="datum" value="${B.datum}"></label></div>
+    <label class="f"><span>Material</span><select class="in" name="artikel" data-b="artikel">${gruppenOptionen(akt, B.artikel, true)}</select></label>
+    <div class="grid">
+      ${brauchtBv ? `<label class="f"><span>Bauvorhaben</span><select class="in" name="bv" data-b="bv" ${B.art === "RETOURE" ? "" : "required"}><option value="">${B.art === "RETOURE" ? "Ohne Baustelle" : "Bitte wählen"}</option>${lauf.map(b => `<option value="${b.id}" ${String(b.id) === B.bv ? "selected" : ""}>${esc((b.nr ? b.nr + " · " : "") + b.name)}</option>`).join("")}</select></label>` : `<label class="f"><span>Lieferant</span><input class="in" name="lief" data-b="lief" value="${esc(B.lief)}" placeholder="z. B. Baustoffhandel"></label>`}
+      <div class="f" style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Menge</span><div class="row" style="flex-wrap:nowrap"><input class="in num" inputmode="decimal" name="menge" data-b="menge" value="${esc(B.menge)}" aria-label="Menge" style="flex:1"><select class="in" name="einheit" data-b="einheit" style="width:120px" aria-label="Einheit">${eh.map(e => `<option ${e === B.einheit ? "selected" : ""}>${esc(e)}</option>`).join("")}</select></div></div>
+      ${brauchtPreis ? `<label class="f"><span>Preis je ${esc(a ? a.einheit : "Stk.")} € (optional)</span><input class="in num" inputmode="decimal" name="preis" data-b="preis" value="${esc(B.preis)}" placeholder="${a && ek(a.id) ? nf(ek(a.id), 2) : "0,00"}"></label>` : ""}
+    </div>
+    <label class="f"><span>Bemerkung (optional)</span><input class="in" name="bem" data-b="bem" value="${esc(B.bem || "")}"></label>
+    <div id="bCalc">${buchungCalc()}</div>
+    <div class="foot"><button type="button" class="btn" data-act="zu">Abbrechen</button><button class="btn p">Buchen</button></div></form>`);
+}
+function buchungCalc(){
+  const a = art(Number(B.artikel)); if (!a) return "";
+  const m = num(B.menge) || 0, stk = B.einheit === "Palette" ? m * a.pro_palette : m, b = Number(a.bestand), r = Number(a.reserviert), frei = b - r, e = " " + esc(a.einheit);
+  const resBv = B.bv ? (S.reserv.find(x => x.artikel_id === a.id && String(x.bauvorhaben_id) === B.bv) || {}).stueck || 0 : 0;
+  let t = "", bad = false;
+  if (B.art === "AUSGABE") { const ausRes = Math.min(resBv, stk, r); bad = stk - ausRes > frei; t = `= ${nf(stk)}${e}${ausRes ? ` (davon ${nf(ausRes)}${e} aus Reservierung dieser Baustelle)` : ""} · danach im Lager ${nf(b - stk)}${e}${bad ? ` · Nicht genug frei: nur ${nf(Math.max(frei, 0))}${e} verfügbar` : ""}`; }
+  else if (B.art === "RESERVIERT") { bad = stk > frei; t = `= ${nf(stk)}${e} · danach frei verfügbar ${nf(frei - stk)}${e}${bad ? " · So viel ist nicht frei" : ""}`; }
+  else if (B.art === "RES_STORNO") { bad = stk > resBv; t = `Für diese Baustelle reserviert: ${nf(resBv)}${e}${bad ? " · Es kann höchstens so viel aufgehoben werden" : ""}`; }
+  else { const p = num(B.preis), alt = ek(a.id); const neu = p ? (alt > 0 && b > 0 ? (b * alt + stk * p) / (b + stk) : p) : alt; t = `= ${nf(stk)}${e} · danach im Lager ${nf(b + stk)}${e}${neu ? " · Ø Mischpreis " + eur(neu) + (p && alt ? " (bisher " + eur(alt) + ")" : "") : ""}`; }
+  return `<div class="calc ${bad ? "bad" : ""}">${t}</div>`;
+}
+
+/* Artikel */
+let A = null;
+function artikelFenster(id){
+  const a = id ? art(Number(id)) : null;
+  if (!A || A._id !== (a ? a.id : null)) A = a ? {_id: a.id, gruppe: a.gruppe, gneu: "", herst: a.hersteller, hneu: "", name: a.name, artnr: a.artnr, einheit: a.einheit, pal: a.pro_palette ? nf(a.pro_palette) : "", min: a.mindestbestand ? nf(a.mindestbestand) : "", ek: ek(a.id) ? nf(ek(a.id), 2) : "", anf: ""} : {_id: null, gruppe: uniq(S.artikel.map(x => x.gruppe))[0] || "__neu", gneu: "", herst: uniq(S.artikel.map(x => x.hersteller))[0] || "__neu", hneu: "", name: "", artnr: "", einheit: "Stk.", pal: "", min: "", ek: "", anf: ""};
+  const gr = uniq(S.artikel.map(x => x.gruppe)), he = uniq(S.artikel.map(x => x.hersteller));
+  fenster(`<h2>${a ? "Artikel bearbeiten" : "Neuer Artikel"}</h2><form id="fArt" class="stack" style="margin-top:12px">
+    <div class="grid">
+      <label class="f"><span>Materialgruppe</span><select class="in" data-a="gruppe">${gr.map(g => `<option ${g === A.gruppe ? "selected" : ""}>${esc(g)}</option>`).join("")}<option value="__neu" ${A.gruppe === "__neu" ? "selected" : ""}>+ Neue Gruppe anlegen …</option></select></label>
+      ${A.gruppe === "__neu" ? `<label class="f"><span>Name der neuen Gruppe</span><input class="in" data-a="gneu" value="${esc(A.gneu)}" placeholder="z. B. Mörtel, Dämmung" required></label>` : ""}
+      <label class="f"><span>Hersteller</span><select class="in" data-a="herst">${he.map(g => `<option ${g === A.herst ? "selected" : ""}>${esc(g)}</option>`).join("")}<option value="__neu" ${A.herst === "__neu" ? "selected" : ""}>+ Neuen Hersteller anlegen …</option></select></label>
+      ${A.herst === "__neu" ? `<label class="f"><span>Name des neuen Herstellers</span><input class="in" data-a="hneu" value="${esc(A.hneu)}" placeholder="z. B. Wienerberger" required></label>` : ""}
+      <label class="f"><span>Produktname</span><input class="in" data-a="name" value="${esc(A.name)}" required></label>
+      <label class="f"><span>Artikel-Nr.</span><input class="in mono" data-a="artnr" value="${esc(A.artnr)}"></label>
+      <label class="f"><span>Einheit</span><select class="in" data-a="einheit">${uniq(EINHEITEN.concat([A.einheit])).map(e => `<option ${e === A.einheit ? "selected" : ""}>${esc(e)}</option>`).join("")}</select></label>
+      <label class="f"><span>Menge je Palette</span><input class="in num" inputmode="decimal" data-a="pal" value="${esc(A.pal)}" placeholder="leer = keine Palette"></label>
+      <label class="f"><span>Mindestbestand</span><input class="in num" inputmode="decimal" data-a="min" value="${esc(A.min)}" placeholder="optional"></label>
+      <label class="f"><span>${a ? "Ø Mischpreis € (überschreiben)" : "EK-Preis je Einheit €"}</span><input class="in num" inputmode="decimal" data-a="ek" value="${esc(A.ek)}" placeholder="optional"></label>
+      ${a ? "" : `<label class="f"><span>Anfangsbestand</span><input class="in num" inputmode="decimal" data-a="anf" value="${esc(A.anf)}" placeholder="0"></label>`}
+    </div>
+    <p class="hint" style="margin:0">${a ? "Der Bestand wird hier nicht geändert – dafür „Inventur“ oder eine Buchung verwenden." : "Artikel ohne Bestand liegen im Katalog bereit und erscheinen in der Bestandsliste, sobald Ware gebucht ist."}</p>
+    <div class="foot">${a ? `<button type="button" class="btn d" data-act="ausblenden" data-id="${a.id}" style="margin-right:auto">${a.aktiv ? "Ausblenden" : "Wieder einblenden"}</button>` : ""}<button type="button" class="btn" data-act="zu">Abbrechen</button><button class="btn p">${a ? "Speichern" : "Artikel anlegen"}</button></div></form>`);
+}
+
+function inventurFenster(id){
+  const a = art(Number(id));
+  fenster(`<h2>Inventur</h2><p class="muted" style="margin:0">${esc(artName(a))}</p><form id="fInv2" class="stack" style="margin-top:12px"><input type="hidden" name="id" value="${a.id}">
+    <div class="grid"><div><span class="hint">Bestand laut App</span><div style="font:700 26px 'Barlow Condensed',sans-serif">${nf(a.bestand)} ${esc(a.einheit)}</div></div>
+    <label class="f"><span>Gezählter Bestand (${esc(a.einheit)})</span><input class="in num" inputmode="decimal" name="ist" required></label></div>
+    <label class="f"><span>Bemerkung</span><input class="in" name="bem" placeholder="z. B. Jahresinventur"></label>
+    <p class="hint" style="margin:0">Die Differenz wird als Inventur-Bewegung mit Datum und Namen gespeichert.</p>
+    <div class="foot"><button type="button" class="btn" data-act="zu">Abbrechen</button><button class="btn p">Bestand korrigieren</button></div></form>`);
+}
+
+function bvFenster(id){
+  const b = id ? S.bv.find(x => x.id === Number(id)) : null;
+  const next = "BAU-" + String(S.bv.reduce((m, x) => Math.max(m, parseInt(String(x.nr).replace(/\D/g, ""), 10) || 0), 0) + 1).padStart(3, "0");
+  fenster(`<h2>${b ? "Bauvorhaben bearbeiten" : "Neues Bauvorhaben"}</h2><form id="fBv" class="stack" style="margin-top:12px"><input type="hidden" name="id" value="${b ? b.id : ""}">
+    <div class="grid"><label class="f"><span>Nummer</span><input class="in mono" name="nr" value="${esc(b ? b.nr : next)}"></label>
+    <label class="f"><span>Bauvorhaben</span><input class="in" name="name" value="${esc(b ? b.name : "")}" required placeholder="z. B. Huber Einfamilienhaus"></label>
+    <label class="f"><span>Ort</span><input class="in" name="ort" value="${esc(b ? b.ort : "")}"></label>
+    <label class="f"><span>Kunde</span><input class="in" name="kunde" value="${esc(b ? b.kunde : "")}"></label>
+    <label class="f"><span>Beginn</span><input class="in" type="date" name="beginn" value="${b ? b.beginn : S.heute}"></label>
+    <label class="f"><span>Status</span><select class="in" name="status"><option value="laufend" ${!b || b.status === "laufend" ? "selected" : ""}>Laufend</option><option value="abgeschlossen" ${b && b.status === "abgeschlossen" ? "selected" : ""}>Abgeschlossen</option></select></label></div>
+    <div class="foot"><button type="button" class="btn" data-act="zu">Abbrechen</button><button class="btn p">Speichern</button></div></form>`);
+}
+
+function profilFenster(){
+  fenster(`<h2>Mein Profil</h2><form id="fProf" class="stack" style="margin-top:12px">
+    <label class="f"><span>Name</span><input class="in" name="name" value="${esc(S.me.name)}" required></label>
+    <label class="f"><span>Telefon</span><input class="in" type="tel" name="tel" value="${esc(S.me.telefon)}"></label>
+    <p class="hint" style="margin:0">${esc(S.user.email)} · ${ROLLEN[S.me.rolle]} bei ${esc((S.liz || {}).firma || "")}</p>
+    <label class="f"><span>Neues Passwort (optional, mind. 8 Zeichen)</span><input class="in" type="password" name="pw" minlength="8" autocomplete="new-password"></label>
+    <div class="foot"><button type="button" class="btn" data-act="zu">Abbrechen</button><button class="btn p">Speichern</button></div></form>`);
+}
+
+function preisFenster(){
+  const pk = PAKETE.find(p => p.id === (window.__pk || "team")) || PAKETE[1];
+  const firma = (S.liz && S.liz.firma) || "";
+  const mail = (lz, preis) => {
+    const sub = encodeURIComponent("Bestellung " + APP + " – Paket " + pk.l + ", " + lz.l);
+    const body = encodeURIComponent("Guten Tag,\n\nich bestelle die Lizenz für " + APP + ":\n\nPaket: " + pk.l + " (bis " + pk.b + " Benutzer)\nLaufzeit: " + lz.l + "\nPreis: " + eurM(preis) + " inkl. 20 % USt\n\nFirma / Name: " + firma + "\nRechnungsadresse: \nUID-Nummer (nur Firmen): \nE-Mail für die Rechnung: \nAnzahl Benutzer – Büro: ___ / Mitarbeiter: ___\n" + (firma ? "\n(Bestehender Kunde – bitte Lizenz verlängern.)\n" : "") + "\nBitte senden Sie mir die Rechnung. Nach Zahlungseingang erhalte ich Lizenzschlüssel und App-Link.\n\nMit freundlichen Grüßen");
+    return "mailto:" + MAIL + "?subject=" + sub + "&body=" + body;
+  };
+  fenster(`<h2>Preise &amp; Lizenz</h2><p style="margin:4px 0 12px">${APP} – Lagerbestand, Buchungen mit Mischpreis, Meldungen von der Baustelle, Bauvorhaben und Benutzer mit Rollen. Alle arbeiten gleichzeitig, Daten liegen sicher auf einem EU-Server.</p>
+    <div class="pills" role="group" aria-label="Paket">${PAKETE.map(p => `<button type="button" data-act="paket" data-v="${p.id}" aria-pressed="${p.id === pk.id}">${p.l} · bis ${p.b} Benutzer</button>`).join("")}</div>
+    <div class="tbl" style="margin-top:12px"><table><thead><tr><th>Laufzeit</th><th class="num">pro Monat</th><th class="num">Gesamt</th><th></th></tr></thead><tbody>
+    ${LAUFZEITEN.map(lz => { const ges = Math.round(pk.p * lz.m * (1 - lz.r) * 100) / 100, sv = pk.p * lz.m - ges; return `<tr><td><b>${lz.l}</b>${sv > .005 ? `<div class="sub">Sie sparen ${eurM(sv)}</div>` : ""}</td><td class="num">${eurM(ges / lz.m)}</td><td class="num"><b>${eurM(ges)}</b></td><td class="num"><a class="btn p s" href="${mail(lz, ges)}">Bestellen</a></td></tr>`; }).join("")}
+    </tbody></table></div>
+    <p class="hint">Alle Preise inkl. 20 % USt. „Bestellen“ öffnet eine fertige E-Mail an die Fa. PREISFLIEGER. 30 Tage kostenlos testen – einfach per E-Mail anfragen.</p>
+    <h3>So läuft es ab</h3><ol><li>Sie wählen Paket und Laufzeit und senden die E-Mail ab.</li><li>Sie erhalten eine Rechnung als PDF.</li><li>Nach Zahlungseingang bekommen Sie Ihren Lizenzschlüssel und den App-Link.</li></ol>
+    <p class="hint">Verlängerung zum selben Preis. Ihre Daten bleiben bei einer Verlängerung erhalten. Läuft die Lizenz ab, können Sie weiter lesen und exportieren – gelöscht wird nichts.</p>
+    <div class="foot"><button type="button" class="btn" data-act="zu">Schließen</button></div>`, true);
+}
+function installFenster(){
+  fenster(`<h2>App aufs Handy und PC</h2><p>Die App läuft im Browser. So legen Sie sie auf den Startbildschirm oder in die Favoriten:</p>
+    <h3>iPhone / iPad (Safari)</h3><ol><li>App-Link in <b>Safari</b> öffnen (nicht in Mail oder WhatsApp).</li><li>Unten auf <b>Teilen</b> tippen (Quadrat mit Pfeil).</li><li><b>Zum Home-Bildschirm</b> wählen und mit <b>Hinzufügen</b> bestätigen.</li></ol>
+    <h3>Android (Chrome)</h3><ol><li>App-Link in <b>Chrome</b> öffnen.</li><li>Oben rechts auf die <b>drei Punkte</b> tippen.</li><li><b>Zum Startbildschirm hinzufügen</b> (oder <b>App installieren</b>) wählen und bestätigen.</li></ol>
+    <h3>PC (Chrome, Edge, Firefox)</h3><ol><li>App-Link öffnen.</li><li>Mit <b>Strg + D</b> (Mac: <b>Cmd + D</b>) als Lesezeichen/Favorit speichern.</li></ol>
+    <p class="hint">Ihre Daten liegen sicher auf dem Server (EU) – nicht im Browser. Sie können sich auf jedem Gerät anmelden, nichts geht verloren.</p>
+    <div class="foot"><button type="button" class="btn" data-act="zu">Schließen</button></div>`);
+}
+
+/* ===================== Formulare ===================== */
+const formHandler = {
+  fBuch: async () => {
+    const a = art(Number(B.artikel)), m = num(B.menge);
+    if (!a) throw new Error("Bitte ein Material wählen.");
+    if (!m || m <= 0) throw new Error("Bitte eine Menge größer 0 eingeben.");
+    if (B.art !== "EINGANG" && B.art !== "RETOURE" && !B.bv) throw new Error("Bitte ein Bauvorhaben wählen.");
+    await rpc("buchen", {p_art: B.art, p_artikel: a.id, p_datum: B.datum || S.heute, p_menge: m, p_einheit: B.einheit, p_bauvorhaben: B.bv ? Number(B.bv) : null, p_lieferant: B.lief || "", p_preis: (B.art === "EINGANG" || B.art === "RETOURE") ? num(B.preis) : null, p_bemerkung: B.bem || ""});
+    toast(ARTEN[B.art].l + " gebucht: " + mengeTxt({menge: m, einheit: B.einheit}) + " " + artName(a) + ".", "ok");
+    B = Object.assign(B, {menge: "1", preis: "", bem: ""});
+    schliessen(); await nachAktion(["artikel","artikel_preise","bewegungen"]);
+  },
+  fArt: async () => {
+    const g = A.gruppe === "__neu" ? A.gneu : A.gruppe, h = A.herst === "__neu" ? A.hneu : A.herst;
+    await rpc("artikel_speichern", {p_id: A._id, p_gruppe: g, p_hersteller: h, p_name: A.name, p_artnr: A.artnr, p_einheit: A.einheit, p_pro_palette: num(A.pal) || 0, p_mindestbestand: num(A.min) || 0, p_ek: num(A.ek), p_anfangsbestand: num(A.anf) || 0});
+    toast((A._id ? "Gespeichert: " : "Angelegt: ") + h + " " + A.name, "ok"); A = null;
+    schliessen(); await nachAktion(["artikel","artikel_preise","bewegungen"]);
+  },
+  fInv2: async fd => {
+    const ist = num(fd.get("ist")); if (ist === null || ist < 0) throw new Error("Bitte den gezählten Bestand eingeben.");
+    await rpc("inventur", {p_artikel: Number(fd.get("id")), p_ist: ist, p_bemerkung: fd.get("bem") || ""});
+    toast("Bestand korrigiert.", "ok"); schliessen(); await nachAktion(["artikel","bewegungen"]);
+  },
+  fBv: async fd => {
+    await rpc("bauvorhaben_speichern", {p_id: fd.get("id") ? Number(fd.get("id")) : null, p_nr: fd.get("nr"), p_name: fd.get("name"), p_ort: fd.get("ort"), p_kunde: fd.get("kunde"), p_beginn: fd.get("beginn") || null, p_status: fd.get("status")});
+    toast("Bauvorhaben gespeichert.", "ok"); if (fd.get("beginn")) S.f.bvJahr = fd.get("beginn").slice(0, 4);
+    schliessen(); await nachAktion(["bauvorhaben"]);
+  },
+  fProf: async fd => {
+    await rpc("mein_profil", {p_name: fd.get("name"), p_telefon: fd.get("tel")});
+    if (fd.get("pw")) { const {error} = await sb.auth.updateUser({password: fd.get("pw")}); if (error) throw error; }
+    toast("Profil gespeichert.", "ok"); schliessen(); await nachAktion(["profile"]);
+  },
+  fMeld: async () => {
+    const a = art(Number(M.artikel)), m = num(M.menge);
+    if (!a) throw new Error("Bitte ein Material wählen.");
+    if (!m || m <= 0) throw new Error("Bitte eine Menge größer 0 eingeben.");
+    if (M.art === "RETOURE" && !M.bv) throw new Error("Bitte die Baustelle wählen.");
+    await rpc("meldung_erstellen", {p_art: M.art, p_artikel: a.id, p_menge: m, p_einheit: M.einheit, p_bauvorhaben: M.art === "RETOURE" ? Number(M.bv) : null, p_notiz: M.notiz});
+    toast("Ans Büro gemeldet – danke! Das Büro prüft und bucht zu.", "ok");
+    M = Object.assign(M, {menge: 1, notiz: ""});
+    S.tab = istBuero() ? "eingaenge" : "meine"; await nachAktion(["meldungen"]); render();
+  },
+  fEinl: async fd => {
+    const code = await rpc("einladung_erstellen", {p_rolle: fd.get("rolle")});
+    const link = location.origin + location.pathname;
+    const text = "Hallo! Du bist zu " + APP + " (" + ((S.liz || {}).firma || "") + ") eingeladen.\n1. App öffnen: " + link + "\n2. „Einladung“ wählen\n3. Code eingeben: " + code + "\nDer Code gilt 14 Tage.";
+    $("einlOut").innerHTML = `<div class="msg ok" style="margin-top:12px"><div>Einladungscode für ${ROLLEN[fd.get("rolle")]}:</div><div class="mono" style="font-size:26px;font-weight:700;letter-spacing:.08em">${esc(code)}</div>
+      <div class="row" style="margin-top:8px"><button type="button" class="btn s" data-act="kopieren" data-v="${esc(text)}">Text kopieren</button><a class="btn s" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(text)}">Per WhatsApp senden</a></div></div>`;
+    await ladeTab("einladungen");
+  },
+  fFirma: async fd => {
+    const r = await rpc("firma_anlegen", {p_name: fd.get("name"), p_paket: fd.get("paket"), p_laufzeit: fd.get("lz")});
+    await ladeHersteller(); render();
+    $("firmaOut").innerHTML = `<div class="msg ok" style="margin-top:12px">Kunde angelegt. Lizenzschlüssel: <span class="mono" style="font-weight:700">${esc(r.schluessel)}</span> <button type="button" class="btn s" data-act="kopieren" data-v="${esc(r.schluessel)}">Kopieren</button><div class="hint" style="margin-top:6px">Gilt sofort – kein Hochladen nötig. Kunde öffnet die App → „Firma freischalten“.</div></div>`;
+  },
+  fSys: async fd => {
+    await rpc("system_setzen", {p_an: !!fd.get("an"), p_meldung: fd.get("msg") || ""});
+    toast("Gespeichert – gilt sofort für alle Kunden.", "ok"); await ladeHersteller(); await ladeLizenz(); render();
+  }
+};
+
+/* ===================== Klicks & Eingaben ===================== */
+document.addEventListener("click", async e => {
+  const t = e.target.closest("[data-tab],[data-act],[data-auth],[data-m]");
+  if (!t) return;
+  if (t.dataset.auth) { S.auth = t.dataset.auth; zeigeAuth(); return; }
+  if (t.dataset.m) { e.preventDefault(); return meldeKlick(t); }
+  if (t.dataset.tab) { e.preventDefault(); if ($("ov")) schliessen(); S.tab = t.dataset.tab; if (t.dataset.zeige) S.f.zeige = t.dataset.zeige; render(); window.scrollTo({top: 0}); return; }
+  const a = t.dataset.act, id = t.dataset.id;
+  try {
+    if (a === "logout") { await sb.auth.signOut(); S.user = null; S.me = null; S.auth = "login"; zeigeAuth(); }
+    else if (a === "preise") preisFenster();
+    else if (a === "paket") { window.__pk = t.dataset.v; preisFenster(); }
+    else if (a === "install") installFenster();
+    else if (a === "zu") schliessen();
+    else if (a === "profil") profilFenster();
+    else if (a === "buchung") { B = null; buchungFenster(); }
+    else if (a === "artikel") { A = null; artikelFenster(id); }
+    else if (a === "inventur") inventurFenster(id);
+    else if (a === "bv") bvFenster(id);
+    else if (a === "excel") excel();
+    else if (a === "kopieren") { try { await navigator.clipboard.writeText(t.dataset.v); toast("Kopiert.", "ok"); } catch (er) { window.prompt("Zum Kopieren:", t.dataset.v); } }
+    else if (a === "ausblenden") { const x = art(Number(id)); await rpc("artikel_aktiv", {p_id: x.id, p_aktiv: !x.aktiv}); toast(x.aktiv ? "Artikel ausgeblendet – Bewegungen bleiben erhalten." : "Artikel wieder eingeblendet.", "ok"); A = null; schliessen(); await nachAktion(["artikel"]); }
+    else if (a === "bvbew") { S.f.bvf = id; S.f.jahr = S.f.bvJahr || S.heute.slice(0, 4); S.f.monat = ""; S.f.art = ""; S.tab = "bewegungen"; render(); }
+    else if (a === "bvstatus") { const b = S.bv.find(x => x.id === Number(id)); await rpc("bauvorhaben_speichern", {p_id: b.id, p_nr: b.nr, p_name: b.name, p_ort: b.ort, p_kunde: b.kunde, p_beginn: b.beginn, p_status: b.status === "laufend" ? "abgeschlossen" : "laufend"}); toast("»" + b.name + "« ist jetzt " + (b.status === "laufend" ? "abgeschlossen." : "wieder laufend."), "ok"); await nachAktion(["bauvorhaben"]); }
+    else if (a === "zubuchen") { const inp = document.querySelector(`[data-preis="${id}"]`); t.disabled = true; await rpc("meldung_zubuchen", {p_id: Number(id), p_preis: num(inp && inp.value)}); toast("Zugebucht – Bestand aktualisiert.", "ok"); await nachAktion(["meldungen","artikel","artikel_preise","bewegungen"]); }
+    else if (a === "ablehnen") { const g = window.prompt("Grund für die Ablehnung (wird dem Melder angezeigt):", ""); if (g === null) return; await rpc("meldung_ablehnen", {p_id: Number(id), p_grund: g}); toast("Meldung abgelehnt.", "ok"); await nachAktion(["meldungen"]); }
+    else if (a === "aktiv") { const p = S.profile.find(x => x.id === id); await rpc("benutzer_aendern", {p_id: id, p_rolle: p.rolle, p_aktiv: !p.aktiv}); toast(p.name + (p.aktiv ? " deaktiviert." : " aktiviert."), "ok"); await nachAktion(["profile"]); }
+    else if (a === "einlDel") { await rpc("einladung_loeschen", {p_code: id}); await ladeTab("einladungen"); render(); }
+    else if (a === "verl") { const m = Number($("ex-" + id).value); const bis = await rpc("firma_verlaengern", {p_id: id, p_monate: m}); toast("Verlängert bis " + deDate(bis) + " – gilt sofort.", "ok"); await ladeHersteller(); render(); }
+    else if (a === "sperr") { const f = S.firmen.find(x => x.id === id); await rpc("firma_setzen", {p_id: id, p_paket: f.paket, p_gesperrt: !f.gesperrt, p_bis: null, p_notiz: null}); toast(f.name + (f.gesperrt ? " entsperrt." : " gesperrt."), "ok"); await ladeHersteller(); render(); }
+    else if (a === "neuKey") { if (!window.confirm("Neuen Lizenzschlüssel erzeugen? Der alte bleibt gültig, falls er schon eingelöst wurde.")) return; const k = await rpc("firma_neuer_schluessel", {p_id: id}); await ladeHersteller(); render(); toast("Neuer Schlüssel: " + k, "ok"); }
+  } catch (err) { fehler(err); t.disabled = false; }
+});
+
+document.addEventListener("input", e => {
+  const t = e.target;
+  if (t.dataset.f !== undefined) { S.f[t.dataset.f] = t.value; if (t.tagName === "SELECT") { if (t.dataset.f === "gruppe") S.f.herst = ""; } const pos = t.selectionStart; $("view").innerHTML = VIEWS[S.tab](); const n = document.querySelector(`[data-f="${t.dataset.f}"]`); if (n) { n.focus(); if (pos != null && n.setSelectionRange) try { n.setSelectionRange(pos, pos); } catch (er) {} } return; }
+  if (t.dataset.b !== undefined) { B[t.dataset.b] = t.value; if (["art","artikel","einheit"].includes(t.dataset.b)) { if (t.dataset.b === "artikel") B.preis = ""; buchungFenster(); const n = document.querySelector(`[data-b="${t.dataset.b}"]`); if (n) n.focus(); } else $("bCalc").innerHTML = buchungCalc(); return; }
+  if (t.dataset.a !== undefined) { A[t.dataset.a] = t.value; if (["gruppe","herst"].includes(t.dataset.a)) { artikelFenster(A._id); const n = document.querySelector(`[data-a="${t.dataset.a === "gruppe" ? (A.gruppe === "__neu" ? "gneu" : "gruppe") : (A.herst === "__neu" ? "hneu" : "herst")}"]`); if (n) n.focus(); } return; }
+  if (t.dataset.m !== undefined) { if (t.dataset.m === "menge") M.menge = num(t.value) || 0; else { M[t.dataset.m] = t.value; if (t.dataset.m === "artikel") { $("view").innerHTML = VIEWS.melden(); const n = document.querySelector('[data-m="artikel"]'); if (n) n.focus(); } } return; }
+  if (t.dataset.preis !== undefined) { const m = S.meld.find(x => x.id === Number(t.dataset.preis)); const o = document.querySelector(`[data-misch="${t.dataset.preis}"]`); if (m && o) o.innerHTML = mischTxt(m, num(t.value)); return; }
+});
+document.addEventListener("change", async e => {
+  const t = e.target;
+  try {
+    if (t.dataset.rolle) { const p = S.profile.find(x => x.id === t.dataset.rolle); await rpc("benutzer_aendern", {p_id: p.id, p_rolle: t.value, p_aktiv: p.aktiv}); toast(p.name + " ist jetzt " + ROLLEN[t.value] + ".", "ok"); await nachAktion(["profile"]); }
+    else if (t.dataset.paket) { const f = S.firmen.find(x => x.id === t.dataset.paket); await rpc("firma_setzen", {p_id: f.id, p_paket: t.value, p_gesperrt: f.gesperrt, p_bis: null, p_notiz: null}); toast("Paket geändert.", "ok"); await ladeHersteller(); render(); }
+  } catch (err) { fehler(err); await nachAktion(["profile"]); }
+});
+function meldeKlick(t){
+  const k = t.dataset.m;
+  if (k === "art") M.art = t.dataset.v;
+  else if (k === "einheit") M.einheit = t.dataset.v;
+  else if (k === "plus") M.menge = Math.floor(Number(M.menge) || 0) + 1;
+  else if (k === "minus") M.menge = Math.max(1, Math.ceil(Number(M.menge) || 1) - 1);
+  else return;
+  $("view").innerHTML = VIEWS.melden();
+}
+
+/* ===================== Excel ===================== */
+function excel(){
+  if (!window.XLSX) { toast("Excel-Export konnte nicht geladen werden.", "bad"); return; }
+  const wb = XLSX.utils.book_new(), buero = istBuero();
+  const best = S.artikel.filter(a => a.aktiv).map(a => { const o = {Materialgruppe: a.gruppe, Hersteller: a.hersteller, Produkt: a.name, "Artikel-Nr.": a.artnr, Einheit: a.einheit, Bestand: Number(a.bestand), Reserviert: Number(a.reserviert), Verfügbar: Number(a.bestand) - Number(a.reserviert), "Je Palette": Number(a.pro_palette) || null}; if (buero) { o["Ø Mischpreis €"] = ek(a.id) || null; o["Lagerwert €"] = ek(a.id) ? Math.round(ek(a.id) * a.bestand * 100) / 100 : null; } o.Status = status(a).l; return o; });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(best), "Lagerbestand");
+  if (buero) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(S.bew.map(b => { const a = art(b.artikel_id); return {Datum: deDate(b.datum), Art: ARTEN[b.art].l, Material: artName(a), "Artikel-Nr.": a ? a.artnr : "", "Bauvorhaben/Lieferant": bvName(b.bauvorhaben_id) || b.lieferant, Menge: Number(b.menge), Einheit: b.einheit, Grundeinheit: Number(b.stueck), "Preis €": b.preis != null ? Number(b.preis) : null, "Wert €": b.preis != null ? Math.round(b.preis * Math.abs(b.stueck) * 100) / 100 : null, Bemerkung: b.bemerkung, "Gebucht von": b.gebucht_name}; })), "Bewegungen");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(S.bv.map(b => ({Nummer: b.nr, Bauvorhaben: b.name, Ort: b.ort, Kunde: b.kunde, Beginn: deDate(b.beginn), Status: b.status}))), "Bauvorhaben");
+  }
+  XLSX.writeFile(wb, APP + " " + ((S.liz || {}).firma || "") + " " + S.heute + ".xlsx");
+}
+
+window.__bf = {S, render};
+})();
+</script>
+</body></html>
