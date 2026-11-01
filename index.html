@@ -113,6 +113,14 @@ td .t{font-weight:600}td .sub{font-size:12px;color:var(--muted)}
 .bvgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
 .kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-top:12px;border-top:1px solid var(--line);margin-top:12px}
 .kv div span{display:block;font-size:12px;color:var(--muted)}.kv div b{font-variant-numeric:tabular-nums}
+.ghead td{background:var(--soft);font:700 13px "Barlow Condensed",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:8px 12px}
+.bereiche{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.bereiche button{min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--paper);font:700 17px "Barlow Condensed",sans-serif;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--ink)}
+.bereiche button[aria-pressed=true]{background:var(--navy);border-color:var(--navy);color:var(--navy-ink)}
+.bereiche button .badge{font-size:11px}
+.modi{display:flex;gap:4px;background:var(--soft);border:1px solid var(--line);padding:4px;border-radius:10px;margin-bottom:12px;overflow-x:auto}
+.modi button{min-height:38px;padding:0 14px;border:0;border-radius:7px;background:transparent;font-weight:600;font-size:14px;cursor:pointer;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:6px}
+.modi button[aria-selected=true]{background:var(--paper);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
 .meld{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
 /* Fenster */
 #ov{position:fixed;inset:0;background:rgba(10,16,24,.55);display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow:auto;z-index:50}
@@ -220,8 +228,9 @@ async function alle(table, order, asc){
 const S = {
   user: null, me: null, liz: null,
   artikel: [], preise: {}, bv: [], bew: [], meld: [], profile: [], einl: [], reserv: [], firmen: [], system: null,
+  inv: [], invP: {}, invBew: [], rep: [], invBv: [],
   tab: null, live: false,
-  f: { q:"", gruppe:"", herst:"", zeige:"vorhanden", jahr:"", monat:"", art:"", bvf:"", bvJahr:"", bvStatus:"laufend", bvq:"", mq:"" },
+  f: { q:"", gruppe:"", herst:"", zeige:"vorhanden", jahr:"", monat:"", art:"", bvf:"", bvJahr:"", bvStatus:"laufend", bvq:"", mq:"", ib:"schalung", imod:"bestand", ig:"", iq:"", iz:"alle", rf:"offen", nkJahr:"" },
   auth: "login", heute: new Date().toISOString().slice(0, 10)
 };
 const istBuero = () => S.me && (S.me.rolle === "admin" || S.me.rolle === "buero");
@@ -341,24 +350,24 @@ async function registrieren(fd, pruefFn, pruefArg, einloesFn, einloesArgs){
 }
 
 document.addEventListener("submit", async e => {
-  const f = e.target; if (!f.id) return;
+  const f = e.target, fid = f.getAttribute("id"); if (!fid) return;
   e.preventDefault();
   const fd = new FormData(f), btn = f.querySelector("button.p");
   if (btn) btn.disabled = true;
   try {
-    if (f.id === "fLogin") {
+    if (fid === "fLogin") {
       const {error} = await sb.auth.signInWithPassword({email: fd.get("email").trim(), password: fd.get("pw")});
       if (error) throw error;
-    } else if (f.id === "fKey") {
+    } else if (fid === "fKey") {
       await registrieren(fd, "schluessel_pruefen", {p_schluessel: fd.get("key")}, "schluessel_einloesen", {p_schluessel: fd.get("key"), p_name: fd.get("name")});
-    } else if (f.id === "fInv") {
+    } else if (fid === "fInv") {
       await registrieren(fd, "einladung_pruefen", {p_code: fd.get("code")}, "einladung_einloesen", {p_code: fd.get("code"), p_name: fd.get("name"), p_telefon: fd.get("tel") || ""});
-    } else if (f.id === "fJoin") {
+    } else if (fid === "fJoin") {
       if (fd.get("code")) await rpc("einladung_einloesen", {p_code: fd.get("code"), p_name: fd.get("name"), p_telefon: fd.get("tel") || ""});
       else await rpc("schluessel_einloesen", {p_schluessel: fd.get("key"), p_name: fd.get("name")});
       await starte();
-    } else if (formHandler[f.id]) {
-      await formHandler[f.id](fd, f);
+    } else if (formHandler[fid]) {
+      await formHandler[fid](fd, f);
     }
   } catch (err) { fehler(err); }
   finally { if (btn && document.body.contains(btn)) btn.disabled = false; }
@@ -366,14 +375,15 @@ document.addEventListener("submit", async e => {
 
 /* ===================== Daten laden & live ===================== */
 async function ladeAlles(){
-  const t = [ladeLizenz(), ladeTab("artikel"), ladeTab("bauvorhaben"), ladeTab("meldungen"), ladeTab("profile")];
-  if (istBuero()) t.push(ladeTab("artikel_preise"), ladeTab("bewegungen"), ladeReserv());
+  const t = [ladeLizenz(), ladeTab("artikel"), ladeTab("bauvorhaben"), ladeTab("meldungen"), ladeTab("profile"), ladeTab("inventar"), ladeTab("reparaturen"), ladeInvBv()];
+  if (istBuero()) t.push(ladeTab("artikel_preise"), ladeTab("bewegungen"), ladeReserv(), ladeTab("inventar_preise"), ladeTab("inventar_bewegungen"));
   if (istAdmin()) t.push(ladeTab("einladungen"));
   if (istHersteller()) t.push(ladeHersteller());
   await Promise.all(t);
 }
 async function ladeLizenz(){ S.liz = await rpc("meine_lizenz"); if (S.liz && S.liz.heute) S.heute = S.liz.heute; }
 async function ladeReserv(){ S.reserv = await rpc("reservierungen"); }
+async function ladeInvBv(){ try { S.invBv = await rpc("inventar_auf_baustellen") || []; } catch (e) { S.invBv = []; } }
 async function ladeHersteller(){
   const [f, sys] = await Promise.all([rpc("firmen_liste"), sb.from("system").select("*").maybeSingle()]);
   S.firmen = f || []; S.system = sys.data;
@@ -386,6 +396,10 @@ async function ladeTab(t){
   else if (t === "meldungen") S.meld = await alle("meldungen", "id", false);
   else if (t === "profile") { S.profile = await alle("profile", "erstellt", true); const m = S.profile.find(p => p.id === S.user.id); if (m) S.me = m; }
   else if (t === "einladungen") S.einl = await alle("einladungen", "erstellt", false);
+  else if (t === "inventar") { try { S.inv = await alle("inventar", "reihenfolge", true); } catch (e) { S.inv = []; S.invFehlt = true; } }
+  else if (t === "inventar_preise") { try { const r = await alle("inventar_preise"); S.invP = {}; r.forEach(p => S.invP[p.inventar_id] = p); } catch (e) {} }
+  else if (t === "inventar_bewegungen") { try { S.invBew = await alle("inventar_bewegungen", "id", false); } catch (e) { S.invBew = []; } }
+  else if (t === "reparaturen") { try { S.rep = await alle("reparaturen", "id", false); } catch (e) { S.rep = []; } }
 }
 let kanal = null, wart = new Set(), timer = null;
 function startLive(){
@@ -406,7 +420,9 @@ async function nachladen(){
       if (x === "firmen" || x === "system") { jobs.push(ladeLizenz()); if (istHersteller()) jobs.push(ladeHersteller()); }
       else if (x === "artikel_preise" && !istBuero()) {}
       else if (x === "bewegungen" && !istBuero()) {}
-      else if (["artikel","artikel_preise","bauvorhaben","bewegungen","meldungen","profile"].includes(x)) jobs.push(ladeTab(x));
+      else if ((x === "inventar_preise" || x === "inventar_bewegungen") && !istBuero()) {}
+      else if (["artikel","artikel_preise","bauvorhaben","bewegungen","meldungen","profile","inventar","inventar_preise","inventar_bewegungen","reparaturen"].includes(x)) jobs.push(ladeTab(x));
+      if (x === "inventar" || x === "inventar_bewegungen") jobs.push(ladeInvBv());
       if (x === "bewegungen" && istBuero()) jobs.push(ladeReserv());
       if (x === "profile" && istHersteller()) jobs.push(ladeHersteller());
     });
@@ -423,11 +439,11 @@ function tabsFuer(){
   const t = [];
   const offen = S.meld.filter(m => m.status === "offen");
   if (istBuero()) {
-    t.push(["uebersicht","Übersicht"], ["bestand","Lagerbestand"], ["eingaenge","Eingänge", offen.length], ["bewegungen","Bewegungen"], ["bauvorhaben","Bauvorhaben"], ["melden","Melden"]);
+    t.push(["uebersicht","Übersicht"], ["bestand","Lagerbestand"], ["eingaenge","Eingänge", offen.length], ["bewegungen","Bewegungen"], ["bauvorhaben","Bauvorhaben"], ["inventar","Schalung & Geräte", S.rep.filter(r => r.status === "gemeldet").length], ["melden","Melden"]);
     if (istAdmin()) t.push(["benutzer","Benutzer"]);
     if (istHersteller()) t.push(["hersteller","Hersteller"]);
   } else {
-    t.push(["bestand","Lagerbestand"], ["melden","Material melden"], ["meine","Meine Meldungen", offen.filter(m => m.von === S.user.id).length]);
+    t.push(["bestand","Lagerbestand"], ["inventar","Schalung & Geräte"], ["melden","Material melden"], ["meine","Meine Meldungen", offen.filter(m => m.von === S.user.id).length]);
   }
   return t;
 }
@@ -675,6 +691,127 @@ VIEWS.hersteller = () => {
     <div><button class="btn p">Speichern</button></div></form></section>`;
 };
 
+/* ---------- Schalung & Geräte ---------- */
+const BEREICHE = {schalung: "Schalung", leihmaterial: "Leihmaterial", leihgeraet: "Leihgeräte", geruest: "Rollgerüst"};
+const REPST = {gemeldet: {l: "Gemeldet", c: "c-warn"}, reparatur: {l: "In Reparatur", c: "c-blue"}, erledigt: {l: "Repariert", c: "c-ok"}, ausgeschieden: {l: "Ausgeschieden", c: "c-bad"}, abgelehnt: {l: "Abgelehnt", c: "c-grey"}};
+const inv = id => S.inv.find(i => i.id === Number(id));
+const invFrei = i => Number(i.gesamt) - Number(i.baustelle) - Number(i.reparatur);
+const tageSeit = d => Math.max(0, Math.round((new Date(S.heute + "T12:00:00") - new Date(String(d).slice(0, 10) + "T12:00:00")) / 864e5));
+function invStatus(i){
+  if (!i.gezaehlt) return {l: "Noch nicht gezählt", c: "c-grey"};
+  const f = invFrei(i);
+  if (Number(i.gesamt) <= 0) return {l: Number(i.nachbestellen) > 0 ? "Fehlt – bestellen" : "Nicht vorhanden", c: Number(i.nachbestellen) > 0 ? "c-bad" : "c-grey"};
+  if (f <= 0) return {l: Number(i.baustelle) > 0 ? "Alles draußen" : "Nichts frei", c: "c-bad"};
+  if (Number(i.nachbestellen) > 0) return {l: "Nachbestellen", c: "c-warn"};
+  return {l: "Im Lager", c: "c-ok"};
+}
+VIEWS.inventar = () => {
+  if (S.invFehlt) return `<div class="card"><b>Dieser Bereich ist noch nicht eingerichtet.</b><p class="hint">Bitte in Supabase das Skript „bauflieger-update-2.sql“ ausführen und die App neu laden.</p></div>`;
+  const F = S.f, buero = istBuero();
+  const imBereich = S.inv.filter(i => i.bereich === F.ib && i.aktiv);
+  const offeneRep = S.rep.filter(r => r.status === "gemeldet" || r.status === "reparatur");
+  const nb = S.inv.filter(i => i.aktiv && Number(i.nachbestellen) > 0);
+  const bereiche = `<div class="bereiche" role="group" aria-label="Bereich">${Object.keys(BEREICHE).map(b => { const n = S.inv.filter(i => i.bereich === b && i.aktiv).length; return `<button data-ib="${b}" aria-pressed="${F.ib === b}">${BEREICHE[b]} <span class="badge g">${n}</span></button>`; }).join("")}</div>`;
+  const modi = [["bestand","Bestand"],["baustellen","Auf Baustellen", S.invBv.filter(x => (inv(x.inventar_id) || {}).bereich === F.ib).length],["reparatur","Reparatur", offeneRep.filter(r => (inv(r.inventar_id) || {}).bereich === F.ib).length]].concat(buero ? [["nachkauf","Nachkauf & Belege"],["nachbestellen","Nachbestellen", nb.filter(i => i.bereich === F.ib).length]] : []);
+  const modiHtml = `<div class="modi" role="tablist">${modi.map(m => `<button role="tab" data-imod="${m[0]}" aria-selected="${F.imod === m[0]}">${m[1]}${m[2] ? ` <span class="badge">${m[2]}</span>` : ""}</button>`).join("")}</div>`;
+  let body = "";
+  if (F.imod === "baustellen") body = invBaustellen();
+  else if (F.imod === "reparatur") body = invReparatur();
+  else if (F.imod === "nachkauf" && buero) body = invNachkauf();
+  else if (F.imod === "nachbestellen" && buero) body = invNachbestellen();
+  else body = invBestand(imBereich);
+  return bereiche + modiHtml + body;
+};
+function invBestand(liste){
+  const F = S.f, buero = istBuero(), q = F.iq.trim().toLowerCase();
+  const gruppen = uniq(liste.map(i => i.gruppe));
+  let rows = liste.filter(i => (!F.ig || i.gruppe === F.ig) && (!q || (i.name + " " + i.artnr + " " + i.artnr_verrechnung + " " + i.gruppe + " " + i.notiz).toLowerCase().includes(q)));
+  rows = rows.filter(i => F.iz === "frei" ? i.gezaehlt && invFrei(i) > 0 : F.iz === "draussen" ? Number(i.baustelle) > 0 : F.iz === "zaehlen" ? !i.gezaehlt : F.iz === "rep" ? Number(i.reparatur) > 0 : true);
+  const zuZaehlen = liste.filter(i => !i.gezaehlt).length;
+  const lm = F.ib === "leihmaterial", lg = F.ib === "leihgeraet";
+  const filt = `<div class="filters">
+    <label class="f w"><span>Suche</span><input class="in" type="search" data-f="iq" value="${esc(F.iq)}" placeholder="Bezeichnung oder Artikel-Nr."></label>
+    <label class="f"><span>Gruppe</span><select class="in" data-f="ig"><option value="">Alle Gruppen</option>${gruppen.map(g => `<option ${g === F.ig ? "selected" : ""}>${esc(g)}</option>`).join("")}</select></label>
+    <label class="f"><span>Anzeigen</span><select class="in" data-f="iz">${[["alle","Alles"],["frei","Nur was im Lager frei ist"],["draussen","Nur was auf Baustellen ist"],["rep","Nur mit Reparatur"],["zaehlen","Noch zu zählen"]].map(o => `<option value="${o[0]}" ${o[0] === F.iz ? "selected" : ""}>${o[1]}</option>`).join("")}</select></label>
+    ${buero ? `<button class="btn" data-act="invEdit" ${darf() ? "" : "disabled"}>${ic.plus} Neuer Eintrag</button>` : ""}</div>
+    <p class="count">${rows.length} Einträge${zuZaehlen ? ` · <b>${zuZaehlen} noch nicht gezählt</b> – ${buero ? "mit „Zählen“ die Anzahl im Lager eintragen" : "das Büro trägt die Anzahl ein"}` : ""}</p>`;
+  if (!buero) {
+    return filt + `<div class="cards">${rows.map(i => { const s = invStatus(i); return `<div class="mcard"><div class="grow"><div style="font-weight:600">${esc(i.name)}</div><div class="muted" style="font-size:13px">${esc(i.gruppe)}${i.artnr ? " · " + esc(i.artnr) : ""}${Number(i.baustelle) ? " · " + nf(i.baustelle) + " auf Baustellen" : ""}${Number(i.reparatur) ? " · " + nf(i.reparatur) + " in Reparatur" : ""}</div>${i.notiz ? `<div class="muted" style="font-size:12px;font-style:italic">${esc(i.notiz)}</div>` : ""}</div><div style="text-align:right;display:flex;flex-direction:column;gap:4px;align-items:flex-end"><div class="big">${i.gezaehlt ? nf(invFrei(i)) + " " + esc(i.einheit) : "?"}</div><span class="chip ${s.c}">${s.l}</span><button class="btn s" data-act="invKaputt" data-id="${i.id}" ${darf() ? "" : "disabled"}>Kaputt melden</button></div></div>`; }).join("") || `<div class="card empty">Nichts in dieser Auswahl.</div>`}</div>`;
+  }
+  let html = "", gAlt = null;
+  rows.forEach(i => {
+    if (i.gruppe !== gAlt) { gAlt = i.gruppe; html += `<tr class="ghead"><td colspan="${lg ? 9 : 8}">${esc(i.gruppe || "Ohne Gruppe")}</td></tr>`; }
+    const s = invStatus(i), pr = S.invP[i.id] || {};
+    html += `<tr><td><div class="t">${esc(i.name)}</div>${i.notiz ? `<div class="sub" style="font-style:italic">${esc(i.notiz)}</div>` : ""}</td>
+      <td class="mono" style="font-size:13px">${esc(i.artnr) || "–"}${lm && i.artnr_verrechnung ? `<div class="sub">Verr. ${esc(i.artnr_verrechnung)}</div>` : ""}</td>
+      <td class="num">${i.gezaehlt ? nf(i.gesamt) : "?"}</td><td class="num"><b>${i.gezaehlt ? nf(invFrei(i)) : "?"}</b></td>
+      <td class="num">${Number(i.baustelle) ? nf(i.baustelle) : "–"}</td><td class="num" style="color:var(--danger)">${Number(i.reparatur) ? nf(i.reparatur) : "–"}</td>
+      ${lg ? `<td style="font-size:13px">${esc(pr.miete_exkl || "–")}${pr.miete_inkl ? `<div class="sub">inkl. ${esc(pr.miete_inkl)}</div>` : ""}</td>` : ""}
+      <td><span class="chip ${s.c}">${s.l}</span>${Number(i.nachbestellen) > 0 ? `<div class="sub" style="margin-top:3px">${nf(i.nachbestellen)} nachbestellen</div>` : ""}</td>
+      <td><div class="row" style="flex-wrap:nowrap">
+        <button class="btn s" data-act="invBuch" data-art="AUSGABE" data-id="${i.id}" ${darf() ? "" : "disabled"}>Ausgeben</button>
+        <button class="btn s" data-act="invBuch" data-art="RUECKGABE" data-id="${i.id}" ${darf() && Number(i.baustelle) > 0 ? "" : "disabled"}>Zurück</button>
+        <button class="btn s" data-act="invKaputt" data-id="${i.id}" ${darf() ? "" : "disabled"}>Kaputt</button>
+        <button class="btn s" data-act="invZaehlen" data-id="${i.id}" ${darf() ? "" : "disabled"}>Zählen</button>
+        <button class="btn s" data-act="invEdit" data-id="${i.id}" ${darf() ? "" : "disabled"} aria-label="Bearbeiten">✎</button></div></td></tr>`;
+  });
+  return filt + `<div class="tbl"><table><thead><tr><th>Bezeichnung</th><th>Art.-Nr.</th><th class="num">Gesamt</th><th class="num">Im Lager</th><th class="num">Baustelle</th><th class="num">Reparatur</th>${lg ? "<th>Leihgebühr exkl.</th>" : ""}<th>Status</th><th><span class="sr">Aktionen</span></th></tr></thead><tbody>${html}</tbody></table>${rows.length ? "" : `<div class="empty">Nichts in dieser Auswahl.</div>`}</div>
+    <p class="hint" style="margin-top:10px">Im Lager = Gesamt − auf Baustellen − in Reparatur. „Zählen“ trägt ein, was einsatzbereit im Lager liegt – Baustelle und Reparatur werden automatisch dazugerechnet.</p>`;
+}
+function invBaustellen(){
+  const F = S.f, buero = istBuero();
+  const liste = S.invBv.filter(x => { const i = inv(x.inventar_id); return i && i.bereich === F.ib; });
+  if (!liste.length) return `<div class="card empty">Aus dem Bereich ${BEREICHE[F.ib]} ist derzeit nichts auf Baustellen.</div>`;
+  const bvIds = uniq(liste.map(x => x.bauvorhaben_id));
+  return `<div class="bvgrid">${bvIds.map(id => { const pos = liste.filter(x => x.bauvorhaben_id === id); const b = S.bv.find(y => y.id === id) || {name: "?"};
+    return `<article class="card"><div class="sec"><h2 style="font-size:20px">${esc(b.name)}</h2><span class="muted" style="font-size:13px">${esc(b.ort || "")}</span></div><div class="list">${pos.map(x => { const i = inv(x.inventar_id), pr = S.invP[i.id] || {}, t = x.seit ? tageSeit(x.seit) : null;
+      return `<div class="it"><div class="grow"><div style="font-weight:600">${nf(x.menge)} ${esc(i.einheit)} ${esc(i.name)}</div><div class="sub muted" style="font-size:12px">${x.seit ? "seit " + deDate(x.seit) + " (" + t + (t === 1 ? " Tag" : " Tage") + ")" : ""}${buero && pr.miete_exkl ? " · Leihgebühr " + esc(pr.miete_exkl) : ""}</div></div>${buero ? `<button class="btn s" data-act="invBuch" data-art="RUECKGABE" data-id="${i.id}" data-bv="${id}" ${darf() ? "" : "disabled"}>Zurück</button>` : ""}</div>`; }).join("")}</div></article>`; }).join("")}</div>
+    <p class="hint" style="margin-top:10px">„seit“ = letzte Ausgabe an diese Baustelle. ${buero ? "Für die Verrechnung der Leihgebühren die Tage × Tarif nehmen." : ""}</p>`;
+}
+function invReparatur(){
+  const F = S.f, buero = istBuero();
+  const rows = S.rep.filter(r => { const i = inv(r.inventar_id); return i && i.bereich === F.ib && (F.rf === "alle" || (F.rf === "offen" ? (r.status === "gemeldet" || r.status === "reparatur") : !(r.status === "gemeldet" || r.status === "reparatur"))); });
+  return `<div class="row" style="margin-bottom:12px"><div class="pills" role="group" aria-label="Status">${[["offen","Offen"],["fertig","Erledigt"],["alle","Alle"]].map(o => `<button data-rf="${o[0]}" aria-pressed="${F.rf === o[0]}">${o[1]}</button>`).join("")}</div>
+    <button class="btn" data-act="invKaputt" ${darf() ? "" : "disabled"} style="margin-left:auto">${ic.plus} Kaputtes Teil melden</button></div>
+    <div class="cards">${rows.map(r => { const i = inv(r.inventar_id), st = REPST[r.status], offen = r.status === "gemeldet" || r.status === "reparatur";
+      return `<article class="card meld"><div style="flex:1 1 320px;min-width:0"><div class="row"><span class="chip ${st.c}">${st.l}</span><span class="muted" style="font-size:13px">${deTime(r.erstellt)} · ${esc(r.von_name)}${r.bauvorhaben_id ? " · von " + esc(bvName(r.bauvorhaben_id)) : ""}</span></div>
+        <div style="font-size:17px;font-weight:600;margin-top:6px">${nf(r.menge)} × ${esc(i.name)}</div><div class="muted" style="font-size:14px">${esc(r.grund) || "–"}${r.erledigt_am ? " · erledigt " + deTime(r.erledigt_am) + " von " + esc(r.erledigt_von) : ""}</div></div>
+        ${buero && offen ? `<div class="row">${r.status === "gemeldet" ? `<button class="btn s" data-act="repSt" data-st="abgelehnt" data-id="${r.id}" ${darf() ? "" : "disabled"}>Ist nicht kaputt</button><button class="btn s p" data-act="repSt" data-st="reparatur" data-id="${r.id}" ${darf() ? "" : "disabled"}>In Reparatur geben</button>` : ""}
+          <button class="btn s d" data-act="repSt" data-st="ausgeschieden" data-id="${r.id}" ${darf() ? "" : "disabled"}>Nicht reparierbar</button><button class="btn s p" data-act="repSt" data-st="erledigt" data-id="${r.id}" ${darf() ? "" : "disabled"}>Repariert – zurück ins Lager</button></div>` : ""}</article>`; }).join("") || `<div class="card empty">Nichts in dieser Ansicht.</div>`}</div>
+    <p class="hint" style="margin-top:10px">„Nicht reparierbar“ zieht die Teile vom Gesamtbestand ab – danach am besten gleich unter „Nachbestellen“ vormerken.</p>`;
+}
+function invNachkauf(){
+  const F = S.f, liste = S.inv.filter(i => i.bereich === F.ib && i.aktiv);
+  const kaeufe = S.invBew.filter(b => b.art === "ZUGANG" && b.gebucht_name !== "Übernahme" && (inv(b.inventar_id) || {}).bereich === F.ib);
+  const jahre = uniq(kaeufe.map(b => String(b.datum).slice(0, 4)).concat([S.heute.slice(0, 4)])).reverse();
+  if (!F.nkJahr) F.nkJahr = S.heute.slice(0, 4);
+  const rows = kaeufe.filter(b => F.nkJahr === "alle" || String(b.datum).startsWith(F.nkJahr));
+  const summe = rows.reduce((a, b) => a + (Number(b.betrag) || 0), 0);
+  return `<form id="fNachkauf" class="card stack" style="margin-bottom:16px"><div class="sec"><h2>Nachkauf erfassen</h2></div>
+    <div class="grid"><label class="f" style="grid-column:span 2"><span>Teil</span><select class="in" name="id" required>${uniq(liste.map(i => i.gruppe)).map(g => `<optgroup label="${esc(g)}">${liste.filter(i => i.gruppe === g).map(i => `<option value="${i.id}">${esc(i.name)}${Number(i.nachbestellen) > 0 ? " · " + nf(i.nachbestellen) + " vorgemerkt" : ""}</option>`).join("")}</optgroup>`).join("")}</select></label>
+      <label class="f"><span>Kaufdatum</span><input class="in" type="date" name="datum" value="${S.heute}" required></label>
+      <label class="f"><span>Menge</span><input class="in num" inputmode="decimal" name="menge" required></label>
+      <label class="f"><span>Lieferant</span><input class="in" name="lief" placeholder="z. B. Doka"></label>
+      <label class="f"><span>Betrag gesamt netto €</span><input class="in num" inputmode="decimal" name="betrag" placeholder="0,00"></label></div>
+    <label class="f"><span>Kaufbeleg (PDF oder Foto, max. 10 MB)</span><input class="in" type="file" name="beleg" accept="application/pdf,image/*" style="padding-top:9px"></label>
+    <div><button class="btn p" ${darf() ? "" : "disabled"}>Speichern &amp; zubuchen</button></div></form>
+    <div class="filters" style="align-items:center"><label class="f" style="flex:0 1 160px"><span>Jahr</span><select class="in" data-f="nkJahr">${jahre.map(j => `<option ${j === F.nkJahr ? "selected" : ""}>${j}</option>`).join("")}<option value="alle" ${F.nkJahr === "alle" ? "selected" : ""}>Alle Jahre</option></select></label><span class="muted" style="margin-left:auto">${rows.length} Nachkäufe · Summe ${eur(summe)}</span></div>
+    <div class="tbl"><table><thead><tr><th>Datum</th><th>Teil</th><th class="num">Menge</th><th class="num">Betrag</th><th>Lieferant</th><th>Kaufbeleg</th></tr></thead><tbody>
+    ${rows.map(b => { const i = inv(b.inventar_id); return `<tr><td class="num">${deDate(b.datum)}</td><td><div class="t">${esc(i ? i.name : "?")}</div><div class="sub">${esc(b.gebucht_name)}</div></td><td class="num">${nf(b.menge)} ${esc(i ? i.einheit : "")}</td><td class="num">${b.betrag != null ? eur(b.betrag) : "–"}</td><td>${esc(b.lieferant) || "–"}</td>
+      <td>${b.beleg ? `<button class="btn s" data-act="belegOeffnen" data-v="${esc(b.beleg)}">📄 ${esc(b.beleg_name || "Beleg")}</button>` : `<label class="btn s d" style="cursor:pointer">Beleg fehlt – hochladen<input type="file" accept="application/pdf,image/*" data-beleg-nach="${b.id}" class="sr"></label>`}</td></tr>`; }).join("")}
+    </tbody></table>${rows.length ? "" : `<div class="empty">Keine Nachkäufe in diesem Zeitraum.</div>`}</div>`;
+}
+function invNachbestellen(){
+  const F = S.f, liste = S.inv.filter(i => i.bereich === F.ib && i.aktiv).sort((a, b) => a.reihenfolge - b.reihenfolge);
+  const vorgemerkt = liste.filter(i => Number(i.nachbestellen) > 0);
+  const text = (F.ib === "schalung" ? "Bestellung bei DOKA" : "Bestellung " + BEREICHE[F.ib]) + "\n\n" + uniq(vorgemerkt.map(i => i.gruppe)).map(g => g + "\n" + vorgemerkt.filter(i => i.gruppe === g).map(i => "  " + nf(i.nachbestellen) + " " + i.einheit + "  " + i.name + (i.artnr ? " (Art.-Nr. " + i.artnr + ")" : "")).join("\n")).join("\n\n") + "\n\nFirma: " + ((S.liz || {}).firma || "") + "\nMit freundlichen Grüßen";
+  return `<div class="two"><section class="card"><div class="sec"><h2>Vormerken</h2></div><p class="hint" style="margin-top:0">Anzahl eintippen – wird sofort gespeichert. Beim Nachkauf wird die Vormerkung automatisch abgezogen.</p>
+    <div class="list">${liste.map(i => `<div class="it"><div class="grow"><div style="font-weight:600">${esc(i.name)}</div><div class="sub muted" style="font-size:12px">${esc(i.gruppe)} · im Lager ${i.gezaehlt ? nf(invFrei(i)) : "?"}</div></div><input class="in num" style="width:90px" inputmode="decimal" data-nb="${i.id}" value="${Number(i.nachbestellen) ? nf(i.nachbestellen) : ""}" placeholder="0" aria-label="Nachbestellen ${esc(i.name)}" ${darf() ? "" : "disabled"}></div>`).join("")}</div></section>
+    <section class="card"><div class="sec"><h2>Bestellliste</h2><span class="chip c-org">${vorgemerkt.length} Positionen</span></div>
+    ${vorgemerkt.length ? `<pre style="white-space:pre-wrap;font:14px/1.5 'IBM Plex Mono',monospace;background:var(--soft);padding:12px;border-radius:8px;margin:0">${esc(text)}</pre>
+    <div class="row" style="margin-top:12px"><a class="btn p" href="mailto:?subject=${encodeURIComponent(text.split("\n")[0])}&body=${encodeURIComponent(text)}">Als E-Mail öffnen</a><button class="btn" data-act="kopieren" data-v="${esc(text)}">Text kopieren</button></div>` : `<div class="empty">Nichts vorgemerkt.</div>`}</section></div>`;
+}
+
 /* ===================== Fenster ===================== */
 function fenster(html, wide){
   schliessen();
@@ -769,6 +906,65 @@ function bvFenster(id){
     <div class="foot"><button type="button" class="btn" data-act="zu">Abbrechen</button><button class="btn p">Speichern</button></div></form>`);
 }
 
+function invBuchFenster(id, art, bvId){
+  const i = inv(id), draussen = S.invBv.filter(x => x.inventar_id === i.id);
+  const lauf = S.bv.filter(b => b.status === "laufend").sort((x, y) => x.name.localeCompare(y.name, "de"));
+  const opts = art === "RUECKGABE" ? draussen.map(x => ({id: x.bauvorhaben_id, l: bvName(x.bauvorhaben_id) + " · " + nf(x.menge) + " draußen"})) : lauf.map(b => ({id: b.id, l: (b.nr ? b.nr + " · " : "") + b.name}));
+  fenster(`<h2>${art === "AUSGABE" ? "Ausgeben an Baustelle" : "Zurück ins Lager"}</h2><p class="muted" style="margin:0">${esc(i.name)} · im Lager ${i.gezaehlt ? nf(invFrei(i)) : "?"} ${esc(i.einheit)}${Number(i.baustelle) ? " · auf Baustellen " + nf(i.baustelle) : ""}</p>
+    <form id="fInvBuch" class="stack" style="margin-top:12px"><input type="hidden" name="id" value="${i.id}"><input type="hidden" name="art" value="${art}">
+    <div class="grid"><label class="f"><span>Bauvorhaben</span><select class="in" name="bv" required><option value="">Bitte wählen</option>${opts.map(o => `<option value="${o.id}" ${String(o.id) === String(bvId || (opts.length === 1 ? opts[0].id : "")) ? "selected" : ""}>${esc(o.l)}</option>`).join("")}</select></label>
+    <label class="f"><span>Menge (${esc(i.einheit)})</span><input class="in num" inputmode="decimal" name="menge" required></label>
+    <label class="f"><span>Datum</span><input class="in" type="date" name="datum" value="${S.heute}"></label></div>
+    <label class="f"><span>Bemerkung (optional)</span><input class="in" name="bem"></label>
+    ${!i.gezaehlt && art === "AUSGABE" ? `<div class="calc bad">Für diesen Eintrag ist noch keine Anzahl erfasst – bitte zuerst „Zählen“.</div>` : ""}
+    <div class="foot"><button type="button" class="btn" data-act="zu">Abbrechen</button><button class="btn p">${art === "AUSGABE" ? "Ausgeben" : "Zurückbuchen"}</button></div></form>`);
+}
+function invKaputtFenster(id){
+  const i = id ? inv(id) : null, liste = S.inv.filter(x => x.bereich === S.f.ib && x.aktiv);
+  const draussen = i ? S.invBv.filter(x => x.inventar_id === i.id) : [];
+  fenster(`<h2>Kaputt melden</h2><form id="fInvKaputt" class="stack" style="margin-top:12px">
+    ${i ? `<input type="hidden" name="id" value="${i.id}"><p class="muted" style="margin:0">${esc(i.name)}</p>` : `<label class="f"><span>Welches Teil?</span><select class="in" name="id" required>${uniq(liste.map(x => x.gruppe)).map(g => `<optgroup label="${esc(g)}">${liste.filter(x => x.gruppe === g).map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join("")}</optgroup>`).join("")}</select></label>`}
+    <div class="grid"><label class="f"><span>Wie viele?</span><input class="in num" inputmode="decimal" name="menge" value="1" required></label>
+    ${draussen.length ? `<label class="f"><span>Wo ist es?</span><select class="in" name="bv"><option value="">Im Lager</option>${draussen.map(x => `<option value="${x.bauvorhaben_id}">Kommt von ${esc(bvName(x.bauvorhaben_id))} zurück</option>`).join("")}</select></label>` : ""}</div>
+    <label class="f"><span>Was ist kaputt?</span><textarea class="in" name="grund" required placeholder="z. B. Schalhaut eingerissen, Gewinde kaputt, Rad blockiert"></textarea></label>
+    <p class="hint" style="margin:0">Die Teile zählen sofort als „in Reparatur“ und werden nicht mehr ausgegeben. Das Büro entscheidet: reparieren oder ausscheiden.</p>
+    <div class="foot"><button type="button" class="btn" data-act="zu">Abbrechen</button><button class="btn p">Melden</button></div></form>`);
+}
+function invZaehlenFenster(id){
+  const i = inv(id);
+  fenster(`<h2>Zählen</h2><p class="muted" style="margin:0">${esc(i.name)} · ${esc(i.gruppe)}</p><form id="fInvZaehlen" class="stack" style="margin-top:12px"><input type="hidden" name="id" value="${i.id}">
+    <div class="grid"><label class="f"><span>Einsatzbereit im Lager (${esc(i.einheit)})</span><input class="in num" inputmode="decimal" name="anz" required value="${i.gezaehlt ? nf(invFrei(i)) : ""}"></label>
+    <div><span class="hint">Dazu kommen automatisch</span><div style="font-weight:600">${nf(i.baustelle)} auf Baustellen · ${nf(i.reparatur)} in Reparatur</div></div></div>
+    <label class="f"><span>Bemerkung</span><input class="in" name="bem" placeholder="z. B. Jahresinventur"></label>
+    <div class="foot"><button type="button" class="btn" data-act="zu">Abbrechen</button><button class="btn p">Speichern</button></div></form>`);
+}
+function invEditFenster(id){
+  const i = id ? inv(id) : null, pr = i ? (S.invP[i.id] || {}) : {}, b = i ? i.bereich : S.f.ib;
+  const gruppen = uniq(S.inv.filter(x => x.bereich === b).map(x => x.gruppe));
+  fenster(`<h2>${i ? "Eintrag bearbeiten" : "Neuer Eintrag"}</h2><form id="fInvEdit" class="stack" style="margin-top:12px"><input type="hidden" name="id" value="${i ? i.id : ""}">
+    <div class="grid"><label class="f"><span>Bereich</span><select class="in" name="bereich">${Object.keys(BEREICHE).map(k => `<option value="${k}" ${k === b ? "selected" : ""}>${BEREICHE[k]}</option>`).join("")}</select></label>
+    <label class="f"><span>Gruppe</span><input class="in" name="gruppe" list="invGruppen" value="${esc(i ? i.gruppe : S.f.ig)}" placeholder="auswählen oder neu eintippen"><datalist id="invGruppen">${gruppen.map(g => `<option value="${esc(g)}"></option>`).join("")}</datalist></label>
+    <label class="f" style="grid-column:span 2"><span>Bezeichnung</span><input class="in" name="name" required value="${esc(i ? i.name : "")}"></label>
+    <label class="f"><span>Art.-Nr. ${b === "leihmaterial" ? "bei Ausgabe" : ""}</span><input class="in mono" name="artnr" value="${esc(i ? i.artnr : "")}"></label>
+    <label class="f"><span>Art.-Nr. Verrechnung (Eingang)</span><input class="in mono" name="artnr_v" value="${esc(i ? i.artnr_verrechnung : "")}"></label>
+    <label class="f"><span>Einheit</span><select class="in" name="einheit">${uniq(["Stk.","Satz","lfm","m²","Paar"].concat(i ? [i.einheit] : [])).map(e => `<option ${e === (i ? i.einheit : "Stk.") ? "selected" : ""}>${esc(e)}</option>`).join("")}</select></label>
+    <label class="f"><span>Nachbestellen vormerken</span><input class="in num" inputmode="decimal" name="nb" value="${i && Number(i.nachbestellen) ? nf(i.nachbestellen) : ""}" placeholder="0"></label>
+    <label class="f"><span>Leihgebühr exkl.</span><input class="in" name="mex" value="${esc(pr.miete_exkl || "")}" placeholder="z. B. 20 € / Tag"></label>
+    <label class="f"><span>Leihgebühr inkl.</span><input class="in" name="min" value="${esc(pr.miete_inkl || "")}" placeholder="z. B. 24 € / Tag"></label>
+    ${i ? "" : `<label class="f"><span>Anzahl gesamt (leer = noch nicht gezählt)</span><input class="in num" inputmode="decimal" name="anf"></label>`}</div>
+    <label class="f"><span>Notiz</span><input class="in" name="notiz" value="${esc(i ? i.notiz : "")}" placeholder="z. B. sehr alt, selten im Gebrauch"></label>
+    <div class="foot">${i ? `<button type="button" class="btn d" data-act="invAus" data-id="${i.id}" style="margin-right:auto">Ausblenden</button>` : ""}<button type="button" class="btn" data-act="zu">Abbrechen</button><button class="btn p">Speichern</button></div></form>`);
+}
+async function belegHochladen(file){
+  if (!file || !file.size) return {path: "", name: ""};
+  if (file.size > 10 * 1024 * 1024) throw new Error("Der Beleg ist größer als 10 MB.");
+  const sauber = file.name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9._-]+/g, "_").slice(-80);
+  const path = S.me.firma_id + "/" + Date.now() + "-" + sauber;
+  const {error} = await sb.storage.from("belege").upload(path, file, {contentType: file.type || "application/octet-stream", upsert: false});
+  if (error) throw error;
+  return {path, name: file.name};
+}
+
 function profilFenster(){
   fenster(`<h2>Mein Profil</h2><form id="fProf" class="stack" style="margin-top:12px">
     <label class="f"><span>Name</span><input class="in" name="name" value="${esc(S.me.name)}" required></label>
@@ -861,6 +1057,37 @@ const formHandler = {
     await ladeHersteller(); render();
     $("firmaOut").innerHTML = `<div class="msg ok" style="margin-top:12px">Kunde angelegt. Lizenzschlüssel: <span class="mono" style="font-weight:700">${esc(r.schluessel)}</span> <button type="button" class="btn s" data-act="kopieren" data-v="${esc(r.schluessel)}">Kopieren</button><div class="hint" style="margin-top:6px">Gilt sofort – kein Hochladen nötig. Kunde öffnet die App → „Firma freischalten“.</div></div>`;
   },
+  fInvBuch: async fd => {
+    const m = num(fd.get("menge")); if (!m || m <= 0) throw new Error("Bitte eine Menge größer 0 eingeben.");
+    const i = inv(fd.get("id"));
+    await rpc("inventar_buchen", {p_id: i.id, p_art: fd.get("art"), p_menge: m, p_bauvorhaben: Number(fd.get("bv")), p_datum: fd.get("datum") || S.heute, p_bemerkung: fd.get("bem") || ""});
+    toast((fd.get("art") === "AUSGABE" ? "Ausgegeben: " : "Zurück im Lager: ") + nf(m) + " " + i.einheit + " " + i.name + " · " + bvName(Number(fd.get("bv"))), "ok");
+    schliessen(); await nachAktion(["inventar","inventar_bewegungen"]);
+  },
+  fInvKaputt: async fd => {
+    const m = num(fd.get("menge")); if (!m || m <= 0) throw new Error("Bitte eine Menge größer 0 eingeben.");
+    const i = inv(fd.get("id"));
+    await rpc("reparatur_melden", {p_id: i.id, p_menge: m, p_grund: fd.get("grund"), p_bauvorhaben: fd.get("bv") ? Number(fd.get("bv")) : null});
+    toast(nf(m) + " × " + i.name + " als kaputt gemeldet.", "ok");
+    S.f.imod = "reparatur"; schliessen(); await nachAktion(["inventar","reparaturen","inventar_bewegungen"]);
+  },
+  fInvZaehlen: async fd => {
+    const a = num(fd.get("anz")); if (a === null || a < 0) throw new Error("Bitte die gezählte Anzahl eingeben.");
+    await rpc("inventar_zaehlen", {p_id: Number(fd.get("id")), p_im_lager: a, p_bemerkung: fd.get("bem") || ""});
+    toast("Gezählt und gespeichert.", "ok"); schliessen(); await nachAktion(["inventar","inventar_bewegungen"]);
+  },
+  fInvEdit: async fd => {
+    const anf = fd.get("anf") === null || fd.get("anf") === "" ? null : num(fd.get("anf"));
+    await rpc("inventar_speichern", {p_id: fd.get("id") ? Number(fd.get("id")) : null, p_bereich: fd.get("bereich"), p_gruppe: fd.get("gruppe"), p_name: fd.get("name"), p_artnr: fd.get("artnr"), p_artnr_verrechnung: fd.get("artnr_v"), p_einheit: fd.get("einheit"), p_nachbestellen: num(fd.get("nb")) || 0, p_notiz: fd.get("notiz"), p_miete_exkl: fd.get("mex"), p_miete_inkl: fd.get("min"), p_ek: null, p_anfangsbestand: anf});
+    S.f.ib = fd.get("bereich"); toast("Gespeichert.", "ok"); schliessen(); await nachAktion(["inventar","inventar_preise","inventar_bewegungen"]);
+  },
+  fNachkauf: async (fd, f) => {
+    const m = num(fd.get("menge")); if (!m || m <= 0) throw new Error("Bitte eine Menge größer 0 eingeben.");
+    const i = inv(fd.get("id")), bel = await belegHochladen(fd.get("beleg"));
+    await rpc("inventar_nachkauf", {p_id: i.id, p_menge: m, p_datum: fd.get("datum") || S.heute, p_lieferant: fd.get("lief") || "", p_betrag: num(fd.get("betrag")), p_beleg: bel.path, p_beleg_name: bel.name, p_bemerkung: "Nachkauf"});
+    toast(nf(m) + " " + i.einheit + " " + i.name + " zugebucht" + (bel.path ? " – Beleg gespeichert." : " – Achtung, noch kein Beleg."), "ok");
+    S.f.nkJahr = (fd.get("datum") || S.heute).slice(0, 4); await nachAktion(["inventar","inventar_bewegungen"]); render();
+  },
   fSys: async fd => {
     await rpc("system_setzen", {p_an: !!fd.get("an"), p_meldung: fd.get("msg") || ""});
     toast("Gespeichert – gilt sofort für alle Kunden.", "ok"); await ladeHersteller(); await ladeLizenz(); render();
@@ -869,10 +1096,13 @@ const formHandler = {
 
 /* ===================== Klicks & Eingaben ===================== */
 document.addEventListener("click", async e => {
-  const t = e.target.closest("[data-tab],[data-act],[data-auth],[data-m]");
+  const t = e.target.closest("[data-tab],[data-act],[data-auth],[data-m],[data-ib],[data-imod],[data-rf]");
   if (!t) return;
   if (t.dataset.auth) { S.auth = t.dataset.auth; zeigeAuth(); return; }
   if (t.dataset.m) { e.preventDefault(); return meldeKlick(t); }
+  if (t.dataset.ib) { S.f.ib = t.dataset.ib; S.f.ig = ""; render(); return; }
+  if (t.dataset.imod) { S.f.imod = t.dataset.imod; render(); return; }
+  if (t.dataset.rf) { S.f.rf = t.dataset.rf; render(); return; }
   if (t.dataset.tab) { e.preventDefault(); if ($("ov")) schliessen(); S.tab = t.dataset.tab; if (t.dataset.zeige) S.f.zeige = t.dataset.zeige; render(); window.scrollTo({top: 0}); return; }
   const a = t.dataset.act, id = t.dataset.id;
   try {
@@ -887,6 +1117,13 @@ document.addEventListener("click", async e => {
     else if (a === "inventur") inventurFenster(id);
     else if (a === "bv") bvFenster(id);
     else if (a === "excel") excel();
+    else if (a === "invBuch") invBuchFenster(id, t.dataset.art, t.dataset.bv);
+    else if (a === "invKaputt") invKaputtFenster(id);
+    else if (a === "invZaehlen") invZaehlenFenster(id);
+    else if (a === "invEdit") invEditFenster(id);
+    else if (a === "invAus") { const i = inv(id); if (!window.confirm("„" + i.name + "“ ausblenden? Die Bewegungen bleiben gespeichert.")) return; await rpc("inventar_aktiv", {p_id: i.id, p_aktiv: false}); toast("Ausgeblendet.", "ok"); schliessen(); await nachAktion(["inventar"]); }
+    else if (a === "repSt") { await rpc("reparatur_status", {p_id: Number(id), p_status: t.dataset.st}); toast({reparatur: "In Reparatur gegeben.", erledigt: "Repariert – wieder im Lager.", ausgeschieden: "Ausgeschieden und vom Bestand abgezogen.", abgelehnt: "Meldung abgelehnt – Teile wieder im Lager."}[t.dataset.st], "ok"); await nachAktion(["inventar","reparaturen","inventar_bewegungen"]); }
+    else if (a === "belegOeffnen") { const w = window.open("", "_blank"); const {data, error} = await sb.storage.from("belege").createSignedUrl(t.dataset.v, 300); if (error) { if (w) w.close(); throw error; } if (w) w.location = data.signedUrl; else location.href = data.signedUrl; }
     else if (a === "kopieren") { try { await navigator.clipboard.writeText(t.dataset.v); toast("Kopiert.", "ok"); } catch (er) { window.prompt("Zum Kopieren:", t.dataset.v); } }
     else if (a === "ausblenden") { const x = art(Number(id)); await rpc("artikel_aktiv", {p_id: x.id, p_aktiv: !x.aktiv}); toast(x.aktiv ? "Artikel ausgeblendet – Bewegungen bleiben erhalten." : "Artikel wieder eingeblendet.", "ok"); A = null; schliessen(); await nachAktion(["artikel"]); }
     else if (a === "bvbew") { S.f.bvf = id; S.f.jahr = S.f.bvJahr || S.heute.slice(0, 4); S.f.monat = ""; S.f.art = ""; S.tab = "bewegungen"; render(); }
@@ -913,6 +1150,8 @@ document.addEventListener("change", async e => {
   const t = e.target;
   try {
     if (t.dataset.rolle) { const p = S.profile.find(x => x.id === t.dataset.rolle); await rpc("benutzer_aendern", {p_id: p.id, p_rolle: t.value, p_aktiv: p.aktiv}); toast(p.name + " ist jetzt " + ROLLEN[t.value] + ".", "ok"); await nachAktion(["profile"]); }
+    else if (t.dataset.belegNach) { const bel = await belegHochladen(t.files[0]); await rpc("inventar_beleg", {p_bewegung: Number(t.dataset.belegNach), p_beleg: bel.path, p_beleg_name: bel.name}); toast("Beleg gespeichert.", "ok"); await nachAktion(["inventar_bewegungen"]); }
+    else if (t.dataset.nb) { const i = inv(t.dataset.nb), pr = S.invP[i.id] || {}; await rpc("inventar_speichern", {p_id: i.id, p_bereich: i.bereich, p_gruppe: i.gruppe, p_name: i.name, p_artnr: i.artnr, p_artnr_verrechnung: i.artnr_verrechnung, p_einheit: i.einheit, p_nachbestellen: num(t.value) || 0, p_notiz: i.notiz, p_miete_exkl: pr.miete_exkl || "", p_miete_inkl: pr.miete_inkl || "", p_ek: pr.ek == null ? null : pr.ek, p_anfangsbestand: null}); await nachAktion(["inventar"]); }
     else if (t.dataset.paket) { const f = S.firmen.find(x => x.id === t.dataset.paket); await rpc("firma_setzen", {p_id: f.id, p_paket: t.value, p_gesperrt: f.gesperrt, p_bis: null, p_notiz: null}); toast("Paket geändert.", "ok"); await ladeHersteller(); render(); }
   } catch (err) { fehler(err); await nachAktion(["profile"]); }
 });
@@ -936,6 +1175,7 @@ function excel(){
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(S.bew.map(b => { const a = art(b.artikel_id); return {Datum: deDate(b.datum), Art: ARTEN[b.art].l, Material: artName(a), "Artikel-Nr.": a ? a.artnr : "", "Bauvorhaben/Lieferant": bvName(b.bauvorhaben_id) || b.lieferant, Menge: Number(b.menge), Einheit: b.einheit, Grundeinheit: Number(b.stueck), "Preis €": b.preis != null ? Number(b.preis) : null, "Wert €": b.preis != null ? Math.round(b.preis * Math.abs(b.stueck) * 100) / 100 : null, Bemerkung: b.bemerkung, "Gebucht von": b.gebucht_name}; })), "Bewegungen");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(S.bv.map(b => ({Nummer: b.nr, Bauvorhaben: b.name, Ort: b.ort, Kunde: b.kunde, Beginn: deDate(b.beginn), Status: b.status}))), "Bauvorhaben");
   }
+  if (S.inv.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(S.inv.filter(i => i.aktiv).map(i => { const o = {Bereich: BEREICHE[i.bereich], Gruppe: i.gruppe, Bezeichnung: i.name, "Art.-Nr. Ausgabe": i.artnr, "Art.-Nr. Verrechnung": i.artnr_verrechnung, Einheit: i.einheit, Gesamt: i.gezaehlt ? Number(i.gesamt) : "nicht gezählt", "Im Lager": i.gezaehlt ? invFrei(i) : null, "Auf Baustellen": Number(i.baustelle), Reparatur: Number(i.reparatur), Nachbestellen: Number(i.nachbestellen) || null, Notiz: i.notiz}; if (buero) { const pr = S.invP[i.id] || {}; o["Miete exkl."] = pr.miete_exkl || ""; o["Miete inkl."] = pr.miete_inkl || ""; } return o; })), "Schalung & Geräte");
   XLSX.writeFile(wb, APP + " " + ((S.liz || {}).firma || "") + " " + S.heute + ".xlsx");
 }
 
